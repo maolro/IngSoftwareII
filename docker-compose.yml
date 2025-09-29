@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    ports:  # Expone los puertos
+      - "5000:5000"   # Backend de flask
+      - "19000:19000" # Herramientas de desarrollo expo
+      - "19001:19001"
+      - "19002:19002"
+    volumes:
+      - ./backend:/app/backend
+      - ./frontend:/app/frontend
