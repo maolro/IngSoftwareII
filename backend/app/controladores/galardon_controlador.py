@@ -1,0 +1,1 @@
+# Endpoints HTTP relacionados con RF-4 (Galardones)

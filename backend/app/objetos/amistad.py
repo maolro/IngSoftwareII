@@ -1,0 +1,1 @@
+# Entidad que modela amistad entre usuarios 

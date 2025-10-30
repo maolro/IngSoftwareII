@@ -1,0 +1,1 @@
+# Endpoints HTTP relacionados con RF-2 (Funcionalidades sociales)

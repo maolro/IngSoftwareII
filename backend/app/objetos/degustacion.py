@@ -1,0 +1,1 @@
+# Entidad de la calificación de una cerveza
