@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct
 
+
 from app.objetos.cerveza import Cerveza
 ####from app.objetos.degustacion import Degustacion
 
@@ -33,19 +34,30 @@ class CervezaService:
         return db_cerveza
 
     @staticmethod
-    def buscar_cervezas(db: Session, q: str = None, estilo: str = None, pais: str = None) -> list[Cerveza]:
+    def buscar_cervezas(db: Session, q: str = None, estilo: str = None, pais: str = None) -> list[tuple[Cerveza, float | None]]:
         """
         Busca y filtra cervezas (RF-3.1, RF-5.7).
+        AHORA INCLUYE LA VALORACIÓN PROMEDIO EN 1 SOLA CONSULTA.
         """
-        query = db.query(Cerveza)
+        # El query ahora pide la Cerveza y el promedio de Degustacion.rating
+        query = db.query(
+            Cerveza,
+            func.avg(Degustacion.rating).label("valoracion_promedio")
+        )
+        
+        # Usamos un LEFT JOIN (isouter=True)
+        # Si una cerveza no tiene degustaciones, el join no la descarta.
+        query = query.join(Degustacion, Degustacion.cerveza_id == Cerveza.id, isouter=True)
         
         if q:
-            # Búsqueda 'ilike' (case-insensitive)
             query = query.filter(Cerveza.nombre.ilike(f"%{q}%"))
         if estilo:
             query = query.filter(Cerveza.estilo == estilo)
         if pais:
             query = query.filter(Cerveza.pais_procedencia == pais)
+            
+        # Agrupamos por Cerveza para que func.avg() funcione por cada cerveza
+        query = query.group_by(Cerveza.id)
             
         return query.order_by(Cerveza.nombre).all()
 
