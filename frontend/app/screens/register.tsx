@@ -3,7 +3,63 @@ import React, { useState, useEffect } from "react";
 import { Text, StyleSheet, TextInput, TouchableOpacity, View, Image } from "react-native";
 
 export default function RegisterScreen() {
+    // Variables
     const router = useRouter();
+    const [username, setUsername] = useState('')
+    const [password, setPassword] = useState('')
+    const [email, setEmail] = useState('')
+    const [confirmPassword, setConfirmPassword] = useState('')
+    const [errorMsg, setErrorMsg] = useState('');
+    const [regError, setRegError] = useState(false);
+
+    // Función de validación de correos
+    const isValidEmail = (email: string) => {
+        const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return regex.test(email);
+    };
+
+    // Gestión de registro
+    const handleRegistration = () => {
+        // Elimina mensaje de error
+        setErrorMsg('');
+
+        if (!username.trim()) {
+            setErrorMsg('ERROR: El nombre de usuario es obligatorio.');
+            setRegError(true);
+            return;
+        }
+
+        if (!isValidEmail(email)) {
+            setErrorMsg('ERROR: Correo electrónico inválido.');
+            setRegError(true);
+            return;
+        }
+
+        if (password.length < 6) {
+            setErrorMsg('ERROR: La contraseña debe tener por lo menos 6 caracteres.');
+            setRegError(true);
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            setErrorMsg('ERROR: Las contraseñas no coinciden.');
+            setRegError(true);
+            return;
+        }
+        
+        // Llama al API
+        if (username === 'admin') { 
+            setErrorMsg('ERROR: El nombre o correo del usuario ya existe.');
+            setRegError(true);
+            return;
+        }
+        router.push('./age_verify');
+    };
+
+    const ErrorMessage = ({ message }: { message: string }) => {
+        if (!message) return null;
+        return <Text style={styles.errorText}>{message}</Text>;
+    };
 
     return (
         <View style={styles.container}>
@@ -17,29 +73,41 @@ export default function RegisterScreen() {
                 style={styles.input}
                 placeholder="Nombre de usuario"
                 autoCapitalize="none"
+                value={username}
+                onChangeText={setUsername}
             />
 
             <TextInput
                 style={styles.input}
                 placeholder="correoelectronico@dominio.com"
                 autoCapitalize="none"
+                value={email}
+                onChangeText={setEmail}
             />
 
             <TextInput
                 style={styles.input}
                 placeholder="Contraseña"
                 autoCapitalize="none"
+                value={password}
+                onChangeText={setPassword}
             />
 
             <TextInput
                 style={styles.input}
                 placeholder="Confirmar contraseña"
                 autoCapitalize="none"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
             />
 
-            <TouchableOpacity style={styles.button} onPress={() => router.push('./age_verify')}>
+            <TouchableOpacity style={styles.button} onPress={handleRegistration}>
                 <Text style={styles.buttonText}>Continuar</Text>
             </TouchableOpacity>
+
+            {regError && (
+                <Text style={styles.errorText}>{errorMsg}</Text>
+            )}
 
             <View style={styles.separatorContainer}>
                     <View style={styles.separatorLine} />
@@ -123,6 +191,13 @@ const styles = StyleSheet.create({
         flex: 1,
         height: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    },
+    errorText: {
+        color: 'rgba(255, 0, 0, 0.7)',
+        marginHorizontal: 10,
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginTop: 10
     },
     separatorText: {
         color: 'rgba(0, 0, 0, 0.7)',

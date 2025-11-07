@@ -1,12 +1,21 @@
-from flask import Flask, jsonify
-from flask_cors import CORS
+from fastapi import FastAPI
+from .database import Base, engine
+from controladores.usuario_controlador import usuario_router
 
-app = Flask(__name__)
-CORS(app)
+# Crea las tablas en la base de datos (si no existen)
+Base.metadata.create_all(bind=engine)
 
-@app.route("/")
-def home():
-    return jsonify(message="Hello from Python backend!")
+# Inicializa la aplicación FastAPI
+app = FastAPI(
+    title="BeerSP API",
+    description="Backend para la aplicación BeerSP.",
+    version="1.0.0"
+)
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+# Incluye el router de usuarios
+app.include_router(usuario_router)
+
+@app.get("/", tags=["Root"])
+def read_root():
+    """Endpoint raíz para verificar que la API está funcionando."""
+    return {"message": "Bienvenido a la API de BeerSP. Visita /docs para la documentación."}

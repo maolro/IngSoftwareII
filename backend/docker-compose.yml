@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # 1. Tu servicio de Base de Datos (como lo definiste)
+  mysql:
+    container_name: beersp-db
+    image: mysql:latest
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=beersp_db
+      - MYSQL_USER=maolro
+      - MYSQL_PASSWORD=beersp_db
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init_beersp:/docker-entrypoint-initdb.d # Descomenta si tienes un script SQL inicial
+    networks:
+      - my_network
+
+  # 2. Tu nuevo servicio de Backend (FastAPI)
+  backend:
+    build: .  # Construye la imagen usando el Dockerfile en este directorio
+    container_name: beersp-api
+    ports:
+      - "8000:8000" # Mapea el puerto 8000 del host al 8000 del contenedor
+    volumes:
+      - ./app:/app/app # Monta tu código local para hot-reloading
+    environment:
+      # Pasa la URL de la BDD al contenedor
+      # ¡IMPORTANTE! Usamos 'mysql' (el nombre del servicio) como host, no 'localhost'
+      - DATABASE_URL=mysql+pymysql://maolro:beersp_db@mysql:3306/beersp_db
+    networks:
+      - my_network
+    depends_on:
+      - mysql # Le dice a Docker que inicie MySQL antes que el backend
+
+volumes:
+  mysql_data:
+
+networks:
+  my_network:
+    driver: bridge
