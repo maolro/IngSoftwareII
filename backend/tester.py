@@ -50,16 +50,16 @@ def test_get_user(user_id: int):
     print(response.json())
 
 def test_update_user(user_id: int, username: str, birth_date: str,
-    email: str, password: str, friend: list):
+    email: str, password: str, friends: list):
     """Prueba actualizar un usuario (PUT /{user_id})"""  
-    # Datos para actualizar (usando el modelo 'Usuario' Pydantic)
+    # Datos para actualizar
     update_data = {
-        "id": user_id,
-        "username": username, # Nuevo username
+        "user_id": user_id,
+        "username": username, 
         "birth_date": birth_date,
-        "email": email, # Mismo email
-        "password": "newpass",
-        "friends": ["friend1"]
+        "email": email, 
+        "password": password,
+        "friends": friends
     }
 
     response = client.put(f"/usuarios/{user_id}", json=update_data)
@@ -109,9 +109,8 @@ def test_remove_friend(user_id: int, friend_id: int):
 # PRUEBAS
 #test_delete_user(5)
 #test_create_user("testuser", "test3@example.com", "pwd123", "2000-01-01")
-test_get_user_friends(1)
 #test_add_friend(1, 6)
-test_remove_friend(1, 6)
-test_get_user_friends(1)
+test_get_user(1)
+#test_update_user(1, "john_pork", "1990-05-15", "john@example.com", "pwd123", [])
 
 
