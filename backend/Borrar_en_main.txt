@@ -1,0 +1,116 @@
+Cerveza REQUISITOS Y DATOS
+
+
+RF-3.1 El usuario debe poder buscar una cerveza existente en el sistema antes de registrar
+una nueva degustación.
+
+RF-3.2 Si la cerveza no existe, el usuario podrá darla de alta, proporcionando una foto,
+descripción y los siguientes atributos: Estilo, País de procedencia, Tamaño,
+Formato, % Alcohol, Amargor (%IBU) y Color.
+
+RF-3.4 El sistema debe calcular y mostrar la valoración promedio de cada cerveza
+basándose en las calificaciones de todos los usuarios.
+
+RF-4.3 Existirán diferentes tipos de galardones basados en: número de cervezas distintas,
+cervezas por país o interacciones sociales (ej: comentarios).
+
+RF-5.4 El dashboard debe mostrar un panel con las 3 cervezas favoritas del usuario (mejor
+puntuadas), con opción a ver la lista completa.
+
+RF-5.7 La lista de degustaciones más valoradas debe poder ser filtrada por estilo de
+cerveza y por país de procedencia.
+
+
+-----------------
+
+- DAR DE ALTA UNA CERVEZA: 
+
+- OBTENER LAS Cervezas
+favoritas del
+usuario (top 3
+por rating)
+
+- Buscar
+cerveza
+antes de
+degustar
+
+
+--------------------------------
+Cosas a tener en cuenta: 
+- En servicios hay 2 servicios que dependen de degustación, y los cuales hay que descomentar cuando se haga el merge con la rama main. (buscar por ####)
+- La creación de la base de datos y su gestión la hace base_datos.py. Si se va a utilizar otra cosa, se debe de ajustar el import de objetos/cerveza
+
+
+
+----------------PRUEBAS----------------
+
+==================================================
+ 📦 PRUEBA: Conexión al Servidor (GET /)
+==================================================
+✅ Servidor conectado. Mensaje: Hello from Python backend!
+
+==================================================
+ 📦 PRUEBA: Crear Cerveza (POST /api/cervezas/)
+==================================================
+❌ ERROR al crear. Código: 409
+   Respuesta: {
+  "error": "La cerveza 'Cerveza de Prueba API' ya existe."
+}
+
+(.venv) [jaime@archlinux 27%] ~/Software II/Proyecto/IngSoftwareII/backend $ ^C
+(.venv) [jaime@archlinux 27%] ~/Software II/Proyecto/IngSoftwareII/backend $ python -m app.prueba
+Iniciando pruebas de API en 2 segundos...
+Asegúrate de que 'app.py' esté ejecutándose en otra terminal.
+
+==================================================
+ 📦 PRUEBA: Conexión al Servidor (GET /)
+==================================================
+✅ Servidor conectado. Mensaje: Hello from Python backend!
+
+==================================================
+ 📦 PRUEBA: Crear Cerveza (POST /api/cervezas/)
+==================================================
+✅ ¡Cerveza creada! (Código 201)
+   Respuesta: {
+  "color": null,
+  "descripcion": null,
+  "estilo": "API Test Lager",
+  "formato": null,
+  "foto": null,
+  "ibu": null,
+  "id": 1,
+  "nombre": "Cerveza de Prueba API",
+  "pais_procedencia": "Python",
+  "porcentaje_alcohol": 5.1,
+  "tamano": null,
+  "valoracion_promedio": 0.0
+}
+
+==================================================
+ 📦 PRUEBA: Crear Duplicado (POST /api/cervezas/)
+==================================================
+✅ ¡Error 409 recibido correctamente!
+   Respuesta: La cerveza 'Cerveza de Prueba API' ya existe.
+
+==================================================
+ 📦 PRUEBA: Buscar Cervezas (GET /api/cervezas/?estilo=...)
+==================================================
+✅ ¡Búsqueda OK! Encontrados 1 resultados.
+   - Cerveza de Prueba API
+
+==================================================
+ 📦 PRUEBA: Obtener Detalle (GET /api/cervezas/1/)
+==================================================
+✅ ¡Detalle OK! Cerveza: Cerveza de Prueba API
+   Valoración Promedio: 0.0
+
+==================================================
+ 📦 PRUEBA: Obtener Estilos (GET /api/cervezas/estilos/)
+==================================================
+✅ ¡Estilos OK! Encontrados 1 estilos.
+   Entre ellos está: 'API Test Lager' (True)
+
+==================================================
+🎉 ¡TODAS LAS PRUEBAS DE API HAN SIDO EXITOSAS! 🎉
+==================================================
