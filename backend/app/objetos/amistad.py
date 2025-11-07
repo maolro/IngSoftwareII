@@ -1,7 +1,14 @@
 # Entidad que modela amistad entre usuarios 
+from dataclasses import dataclass
 from sqlalchemy import TIMESTAMP, Column, Integer, ForeignKey, text
 
+@dataclass
 class FriendRelationship:
+    success: bool
+    message: str
+
+@dataclass
+class FriendRequest:
     user_id: int
     friend_id: int
 

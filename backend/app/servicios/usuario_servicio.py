@@ -145,6 +145,7 @@ class UsuarioServicio:
                 return True
             
             # Añade relación
+            user.friends.append(friend)
             db.commit()
             return True
             
@@ -152,7 +153,34 @@ class UsuarioServicio:
             db.rollback()
             raise e
         
+    def obtener_amigos(self, db: Session, user_id: int) -> List[UsuarioDB]:
+        """
+        Obtiene la lista de amigos de un usuario
+        """
+        user = self.get_usuario_by_id(db, user_id)
+        if not user:
+            return []
+        return user.friends
+    
     def eliminar_amistad(self, db: Session, user_id: int, friend_id: int) -> bool:
         """
-        Elimina un amigo de la lista de amigos del usuario
+        Remove friend relationship
         """
+        try:
+            user = self.get_usuario_by_id(db, user_id)
+            friend = self.get_usuario_by_id(db, friend_id)
+            
+            if not user or not friend:
+                return False
+            
+            # Remove friend relationship
+            if friend in user.friends:
+                user.friends.remove(friend)
+                db.commit()
+                return True
+            return False
+            
+        except Exception as e:
+            db.rollback()
+            print(f"Error removing friend: {e}")
+            return False
