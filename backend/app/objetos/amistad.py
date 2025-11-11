@@ -9,7 +9,6 @@ class FriendRelationship:
 
 @dataclass
 class FriendRequest:
-    user_id: int
     friend_id: int
 
 class FriendDB:

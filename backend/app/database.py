@@ -22,7 +22,7 @@ SessionLocal = sessionmaker(
     bind=engine
 )
 
-# Esta es la clase base de la que heredarán todos tus modelos (UsuarioDB, etc.)
+# Esta es la clase base de la que heredarán todos los modelos (UsuarioDB, etc.)
 Base = declarative_base()
 
 #Función generadora que abre y cierra la sesión de la base de datos

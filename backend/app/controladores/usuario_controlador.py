@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, Path, status, Depends
 from typing import List
 from uuid import UUID
 from sqlalchemy.orm import Session
@@ -170,12 +170,11 @@ def delete_user_by_id(user_id: int, db: Session = Depends(get_db)):
     status_code=status.HTTP_201_CREATED,
     summary="Agregar amigo a usuario"
 )
-def add_friend(friend_request: FriendRequest, db: Session = Depends(get_db)):
+def add_friend(user_id: int, friend: FriendRequest, db: Session = Depends(get_db)):
     """
     Agregar un amigo a un usuario.
     """
-    user_id = friend_request.user_id
-    friend_id = friend_request.friend_id
+    friend_id = friend.friend_id
     try:
         # Para que no pueda añadirse como amigo a sí mismo
         if user_id == friend_id:
@@ -240,6 +239,31 @@ def get_user_friends(user_id: int, db: Session = Depends(get_db)):
     response_model=Usuario,
     summary="Verificar si existe amistad entre usuarios"
 )
+def get_friend_info(user_id: int, friend_id: int, db: Session = Depends(get_db)):
+    db_user = usuario_service.get_usuario_by_id(db=db, user_id=user_id)
+    # Comprueba si el usuario existe
+    if db_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Usuario con ID {user_id} no encontrado."
+        )
+
+    db_friend = usuario_service.get_usuario_by_id(db=db, user_id=friend_id)
+    # Comprueba si el amigo existe
+    if db_friend is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"El usuario de ID {user_id} no tiene ningún amigo con ID {friend_id}."
+        )
+    # Devuelve información de usuario
+    return Usuario(
+            user_id=db_friend.id, 
+            username=db_friend.username,
+            email=db_friend.email,
+            birth_date=db_friend.birth_date,
+            password="",
+            friends=[friend.id for friend in db_friend.friends]
+        )
 
 @usuario_router.delete(
     "/{user_id}/amigos/{friend_id}",

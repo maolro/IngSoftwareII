@@ -1,4 +1,4 @@
--- CONNECT: docker exec -it mysql_container_name mysql -u root -p
+-- CONNECT: docker exec -it beersp-db mysql -u root -p
 USE beersp_db;
 
 -- Create users table with MySQL syntax

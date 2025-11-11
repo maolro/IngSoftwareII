@@ -146,6 +146,7 @@ class UsuarioServicio:
             
             # Añade relación
             user.friends.append(friend)
+            friend.friends.append(user)
             db.commit()
             return True
             
