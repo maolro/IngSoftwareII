@@ -1,19 +1,45 @@
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
-import { Text, StyleSheet, TextInput, TouchableOpacity, View, Image } from "react-native";
+import { Text, StyleSheet, TextInput, TouchableOpacity, View, Image, Platform, Alert } from "react-native";
 import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 
 export default function AgeVerify() {
     const [date, setDate] = useState<Date | undefined>(undefined);
-    const [show, setShow] = useState(false);
+    const [show, setShow] = useState(Platform.OS === 'web');
+    const router = useRouter();
 
     const showDatePicker = () => {
         setShow(true);
     }
 
     const onChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-        setShow(false);
-        setDate(selectedDate);
+        if (Platform.OS !== 'web') {
+            setShow(false);
+        }
+        if (event.type === 'set' && selectedDate) {
+            setDate(selectedDate);
+        }
+    }
+    const handleCheckAge = () => {
+        if (!date) {
+            Alert.alert('Error', 'Por favor, ingrese su fecha de nacimiento.');
+            return;
+        }
+
+        const today = new Date();
+        let age = today.getFullYear() - date.getFullYear();
+        const monthDiff = today.getMonth() - date.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) {
+            age--;
+        }
+
+        if (age >= 18) {
+            Alert.alert('Verificación Exitosa', '¡Bienvenido!');
+            router.push('./home'); 
+        } 
+        else {
+            Alert.alert('Acceso Denegado', 'Debes ser mayor de 18 años.');
+        }
     }
 
     return (
@@ -23,22 +49,15 @@ export default function AgeVerify() {
             <Text style={styles.title}>¿Es usted mayor de edad?</Text>
             <Text style={styles.body}>Ingrese su fecha de nacimiento para verificar su edad</Text>
 
-            <TouchableOpacity onPress={showDatePicker} style={styles.input}>
-                <Text style={styles.body}>
-                    {date ? date.toLocaleDateString('es-ES') : 'Fecha'}
-                </Text>
-            </TouchableOpacity>
-
-            {show && (
-                <DateTimePicker
-                    testID="dateTimePicker"
-                    value={date || new Date()} // Start with selected date or today
-                    mode="date"
-                    display="default"
-                    onChange={onChange}
-                    maximumDate={new Date()} // Users can't select a future date
-                />
-            )}
+            <DateTimePicker
+                testID="dateTimePicker"
+                value={date || new Date()}
+                mode="date"
+                style={styles.webDatePickerTest}
+                display="default"
+                onChange={onChange}
+                maximumDate={new Date()}
+            />
 
             <TouchableOpacity style={styles.button}>
                 <Text style={styles.buttonText}>Comprobar edad</Text>
@@ -55,6 +74,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 20,
         backgroundColor: '#dcda6dff',
+    },
+    webDatePicker: {
+        width: '100%',
+        height: 45,
+        marginBottom: 10,
     },
     logo: {
         width: 200,
@@ -133,5 +157,11 @@ const styles = StyleSheet.create({
         color: 'rgba(0, 0, 0, 0.7)',
         textAlign: 'center',
         textDecorationLine: 'underline',
+    },
+    webDatePickerTest: {
+        width: '80%',
+        height: 50,
+        backgroundColor: 'red', // Bright red background
+        marginTop: 20,
     },
 });

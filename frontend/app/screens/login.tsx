@@ -1,8 +1,32 @@
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
 import { Text, StyleSheet, TextInput, TouchableOpacity, View, Image } from "react-native";
 
 export default function PasswordRecoverScreen() {
+    // Variables
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [loginError, setLoginError] = useState(false);
+    const router = useRouter();
+
+    // Función de gestión de login
+    const handleLogin = () => {
+        // --- Dummy Validation Logic (Replace with real API call later) ---
+        
+        // Example of a hardcoded "correct" user/pass (for demonstration)
+        const CORRECT_USER = 'admin';
+        const CORRECT_PASS = '12345';
+        
+        if (username === CORRECT_USER && password === CORRECT_PASS) {
+            // Success: Clear any previous error and navigate (e.g., to the home screen)
+            setLoginError(false);
+            router.push('./home');
+        } else {
+            // Failure: Set error state to true
+            setLoginError(true);
+        }
+    };
+
     return (
         <View style={styles.container}>
           <Image source={require('../../assets/logo.png')} style={styles.logo} />
@@ -15,17 +39,25 @@ export default function PasswordRecoverScreen() {
               style={styles.input}
               placeholder="Nombre de usuario"
               autoCapitalize="none"
+              value={username}
+              onChangeText={setUsername}
             />
     
             <TextInput
               style={styles.input}
               placeholder="Contraseña"
               autoCapitalize="none"
+              value={password}
+              onChangeText={setPassword}
             />
     
-            <TouchableOpacity style={styles.button}>
+            <TouchableOpacity style={styles.button} onPress={handleLogin}>
               <Text style={styles.buttonText}>Continuar</Text>
             </TouchableOpacity>
+            
+            {loginError && (
+                <Text style={styles.errorText}>ERROR: Usuario o contraseña incorrecta</Text>
+            )}
         </View>
 
         <View style={styles.separatorContainer}>
@@ -104,6 +136,13 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 18,
         fontWeight: 'bold',
+    },
+    errorText: {
+        color: 'rgba(255, 0, 0, 0.7)',
+        marginHorizontal: 10,
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginTop: 10
     },
     separatorContainer: {
         flexDirection: 'row',

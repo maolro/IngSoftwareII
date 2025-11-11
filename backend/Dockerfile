@@ -1,6 +1,6 @@
 FROM python:3.9-slim
 
-WORKDIR /app/backend
+WORKDIR /app
 
 # Copia e instala requisitos
 COPY requirements.txt .
