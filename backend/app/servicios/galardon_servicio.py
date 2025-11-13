@@ -1,13 +1,18 @@
 from sqlalchemy.orm import Session
-from app.objetos import galardon as galardon_modelo
-from app.esquemas import galardon_esquema
-from typing import List, Optional
+from app.objetos.galardon import Galardon, UsuarioGalardon
+from app.objetos.usuario import UsuarioDB
 
 # --- CRUD para la entidad Galardon (RF-4.5 Admin) ---
 
-def crear_galardon(db: Session, galardon: galardon_esquema.GalardonCreate):
+def crear_galardon(db: Session, galardon: dict):
     """Crea un nuevo tipo de galardón (para Admin)"""
-    db_galardon = galardon_modelo.Galardon(**galardon.dict())
+    # Filtramos la entrada para incluir solo columnas del modelo
+    atributos_modelo = Galardon.__table__.columns.keys()
+    data_limpia = {k: v for k, v in galardon.items() if k in atributos_modelo}    
+    db_galardon = Galardon(**data_limpia)
+    if obtener_galardon_por_nombre(db, db_galardon.nombre):
+        raise ValueError("Ya existe un galardón con ese nombre")
+    # Añade a la base de datos
     db.add(db_galardon)
     db.commit()
     db.refresh(db_galardon)
@@ -15,21 +20,33 @@ def crear_galardon(db: Session, galardon: galardon_esquema.GalardonCreate):
 
 def obtener_galardon(db: Session, galardon_id: int):
     """Obtiene un tipo de galardón por ID"""
-    return db.query(galardon_modelo.Galardon).filter(galardon_modelo.Galardon.id == galardon_id).first()
+    return db.query(Galardon).filter(Galardon.id == galardon_id).first()
+
+def obtener_galardon_por_nombre(db: Session, nombre: str):
+    """Obtiene un tipo de galardón por nombre"""
+    return db.query(Galardon).filter(Galardon.nombre == nombre).first()
 
 def obtener_galardones(db: Session, skip: int = 0, limit: int = 100):
     """Obtiene todos los tipos de galardones"""
-    return db.query(galardon_modelo.Galardon).offset(skip).limit(limit).all()
+    return db.query(Galardon).offset(skip).limit(limit).all()
 
-def actualizar_galardon(db: Session, galardon_id: int, galardon: galardon_esquema.GalardonCreate):
+def actualizar_galardon(db: Session, galardon_id: int, galardon: dict):
     """Actualiza un tipo de galardón (para Admin)"""
     db_galardon = obtener_galardon(db, galardon_id)
-    if db_galardon:
-        update_data = galardon.dict(exclude_unset=True)
-        for key, value in update_data.items():
+    if not db_galardon:
+        return None
+    # Actualiza los campos
+    for key, value in galardon.items():
+        # Solo actualizar si el atributo existe en el modelo
+        if hasattr(db_galardon, key):
+            if key=="nombre" and obtener_galardon_por_nombre(db, value):
+                raise ValueError("No puedes cambiar el nombre al de un galardón que ya exista")
             setattr(db_galardon, key, value)
-        db.commit()
-        db.refresh(db_galardon)
+    # Añade a la base de datos
+    db.add(db_galardon)
+    db.commit()
+    
+    db.refresh(db_galardon)
     return db_galardon
 
 def eliminar_galardon(db: Session, galardon_id: int):
@@ -46,9 +63,60 @@ def eliminar_galardon(db: Session, galardon_id: int):
 def obtener_galardones_de_usuario(db: Session, usuario_id: int):
     """Obtiene los galardones que un usuario ha ganado (RF-5.5)"""
     # Usamos la relación para cargar los detalles del galardón automáticamente
-    return db.query(galardon_modelo.UsuarioGalardon).filter(galardon_modelo.UsuarioGalardon.usuario_id == usuario_id).all()
+    return db.query(UsuarioGalardon).filter(UsuarioGalardon.usuario_id == usuario_id).all()
 
-# --- Lógica de Negocio (El núcleo de tu tarea) ---
+def obtener_galardon_de_usuario(db: Session, usuario_id: int, galardon_id: int):
+    """Obtiene los galardones que un usuario ha ganado (RF-5.5)"""
+    # Usamos la relación para cargar los detalles del galardón automáticamente
+    return db.query(UsuarioGalardon).filter(UsuarioGalardon.usuario_id == usuario_id 
+        and UsuarioGalardon.galardon_id == galardon_id).first()
+
+def asignar_galardon_a_usuario(db: Session, usuario_id: int, galardon_id: int, 
+    nivel_actual: int = 1, progreso_actual: int = 0) -> UsuarioGalardon:
+    """
+    Asigna un galardón a un usuario 
+    """
+    # Check if user exists
+    usuario = db.query(UsuarioDB).filter(UsuarioDB.id == usuario_id).first()
+    if not usuario:
+        raise ValueError(f"Usuario con ID {usuario_id} no encontrado")
+    
+    # Comprueba si el galardon existe
+    galardon = obtener_galardon(db, galardon_id)
+    if not galardon:
+        raise ValueError(f"Galardón con ID {galardon_id} no encontrado")
+    
+    # Comprueba si el usuario ya tiene el galardon
+    existing = obtener_galardon_de_usuario(db, usuario_id, galardon_id)
+    if existing:
+        raise ValueError(f"El usuario ya tiene este galardón asignado")
+    
+    # Valida el nivel_actual
+    if nivel_actual < 1:
+        raise ValueError("El nivel actual debe ser al menos 1")
+    
+    # Valida el progreso_actual
+    if progreso_actual < 0:
+        raise ValueError("El progreso actual no puede ser negativo")
+    
+    # Crea una nueva relación
+    usuario_galardon = UsuarioGalardon(
+        usuario_id=usuario_id,
+        galardon_id=galardon_id,
+        nivel_actual=nivel_actual,
+        progreso_actual=progreso_actual
+    )
+    
+    db.add(usuario_galardon)
+    try:
+        db.commit()
+        db.refresh(usuario_galardon)
+        return usuario_galardon
+    except Exception as e:
+        db.rollback()
+        raise e
+
+# --- Lógica de Negocio ---
 # Esta función la llamarán tus compañeros desde sus servicios
 
 def verificar_y_otorgar_galardones_por_degustacion(db: Session, usuario_id: int, degustacion_nueva):

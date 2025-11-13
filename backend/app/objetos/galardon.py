@@ -1,6 +1,8 @@
+from datetime import datetime
+from typing import Any, Dict, Optional
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, TIMESTAMP, JSON, func
 from sqlalchemy.orm import relationship
-from app.database import Base # ¡Asegúrate de que 'Base' viene de 'app.database'
+from app.base_datos import Base 
 from app.objetos.usuario import UsuarioDB # Importa el modelo de Matías
 
 class Galardon(Base):
@@ -20,6 +22,20 @@ class Galardon(Base):
     # Relación para saber qué usuarios tienen este galardón
     usuarios_que_lo_tienen = relationship("UsuarioGalardon", back_populates="galardon")
 
+    # Convierte  en diccionario
+    def to_dict(self):
+        """
+        Convierte el objeto Galardón en un diccionario para la API.
+        """
+        return {
+            "id": self.id,
+            "nombre": self.nombre,
+            "descripcion": self.descripcion,
+            "imagen": self.imagen_url,
+            "tipo": self.tipo,
+            "condiciones": self.condiciones,
+        }
+
 class UsuarioGalardon(Base):
     """
     Tabla de unión que registra el progreso de un usuario en un galardón.
@@ -37,3 +53,16 @@ class UsuarioGalardon(Base):
     # Relaciones para acceder a los objetos
     usuario = relationship("UsuarioDB", back_populates="galardones_obtenidos")
     galardon = relationship("Galardon", back_populates="usuarios_que_lo_tienen")
+
+    # Convierte  en diccionario
+    def to_dict(self):
+        """
+        Convierte el objeto Galardón en un diccionario para la API.
+        """
+        return {
+            "usuario_id": self.usuario_id,
+            "galardon_id": self.galardon_id,
+            "nivel_actual": self.nivel_actual,
+            "progreso_actual": self.progreso_actual,
+            "obtenido_en": self.obtenido_en
+        }

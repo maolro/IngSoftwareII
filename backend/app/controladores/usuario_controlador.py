@@ -1,299 +1,311 @@
-from fastapi import APIRouter, HTTPException, Path, status, Depends
-from typing import List
-from uuid import UUID
+from flask import Blueprint, jsonify, request, abort, g
 from sqlalchemy.orm import Session
+from typing import List
 
 from ..objetos.usuario import Usuario, UsuarioCreate
 from ..objetos.amistad import FriendRelationship, FriendRequest
 from ..servicios.usuario_servicio import UsuarioServicio
-from ..database import get_db
 
-# --- Initialization ---
+# --- Inicialización ---
 
-# 1. Create the FastAPI Router
-usuario_router = APIRouter(
-    prefix="/usuarios",
-    tags=["Usuarios"]
-)
-
-# 2. Initialize the service layer
+usuario_bp = Blueprint('usuario_bp', __name__)
 usuario_service = UsuarioServicio()
 
+# --- HTTP Endpoints ---
 
-# --- HTTP Endpoints (Routes) ---
-
-# 1. POST (Create)
-@usuario_router.post(
-    "/", 
-    response_model=Usuario, 
-    status_code=status.HTTP_201_CREATED,
-    summary="Registrar nuevo usuario"
-)
-# Crea nuevo usuario
-def create_new_user(usuario_data: UsuarioCreate, db: Session = Depends(get_db)):
+# 1. POST (Create) - Registrar nuevo usuario
+@usuario_bp.route("/usuarios/", methods=["POST"])
+def create_new_user():
+    """
+    Registrar nuevo usuario
+    """
+    data = request.json
+    if not data:
+        return jsonify({
+            "error": "No se proporcionaron datos para crear el usuario"
+        }), 400  
+    
+    # Validate required fields
+    required_fields = ['username', 'email', 'password', 'birth_date']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({
+                "error": f"El campo '{field}' es obligatorio"
+            }), 400    
     try:
         # Comprueba si el correo ya existe
-        if usuario_service.get_usuario_by_email(db, email=usuario_data.email):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="El correo electrónico ya está registrado."
-            )
+        if usuario_service.get_usuario_by_email(g.db, email=data['email']):
+            return jsonify({
+                "error": "El correo electrónico ya está registrado."
+            }), 409
         
         # Comprueba si el nombre de usuario ya existe
-        if usuario_service.get_usuario_by_username(db, username=usuario_data.username):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="El nombre de usuario ya está registrado."
-            )
+        if usuario_service.get_usuario_by_username(g.db, username=data['username']):
+            return jsonify({
+                "error": "El nombre de usuario ya está registrado."
+            }), 409
         
         # Llama a la capa de servicios
-        db_user = usuario_service.create_usuario(db, usuario_data)
+        db_user = usuario_service.create_usuario(g.db, data)
 
-        # Convierte a usuario para devolver su información
-        return Usuario(
-            user_id=db_user.id,
-            username=db_user.username,
-            email=db_user.email,
-            birth_date=db_user.birth_date,
-            password="",  
-            friends=[]
-        )
+        return jsonify(db_user.to_dict()), 201
         
-    except HTTPException as e:
-        raise e
     except Exception as e:
-        # Obtiene errores
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Error interno del servidor: {e}"
-        )
+        return jsonify({
+            "error": f"Error interno del servidor: {e}"
+        }), 500
 
 
-# Obtiene todos los usuarios (GET)
-@usuario_router.get(
-    "/", 
-    response_model=List[Usuario],
-    summary="Obtener lista de todos los usuarios"
-)
-def get_all_users(db: Session = Depends(get_db)):
-    # Llama la función que obtiene todos los usuarios
-    usersDB = usuario_service.get_all_usuarios(db=db)
-    return [
-        Usuario(
-            user_id=db_user.id, 
-            username=db_user.username,
-            email=db_user.email,
-            birth_date=db_user.birth_date,
-            password="",
-            friends=[friend.id for friend in db_user.friends]
-        ) for db_user in usersDB
-    ]
-
-
-# Obtiene un usuario específico
-@usuario_router.get(
-    "/{user_id}", 
-    response_model=Usuario,
-    summary="Obtener usuario por ID"
-)
-# Busca un único usuario en base a su nombre de usuario
-def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
-    # Llama la función que trabaja sobre la base de datos
-    db_user = usuario_service.get_usuario_by_id(db=db, user_id=user_id)
-    
-    if db_user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Usuario con ID {user_id} no encontrado."
-        )
-        
-    return Usuario(
-        user_id=db_user.id, 
-        username=db_user.username,
-        email=db_user.email,
-        birth_date=db_user.birth_date,
-        password="",
-        friends=[friend.id for friend in db_user.friends]
-    )
-
-
-# Actualiza usuario
-@usuario_router.put(
-    "/{user_id}",
-    response_model=Usuario,
-    summary="Actualizar información del usuario"
-)
-def update_user_by_id(user_id: int, usuario: Usuario, db: Session = Depends(get_db)):
+# 2. GET - Obtener todos los usuarios
+@usuario_bp.route("/usuarios/", methods=["GET"])
+def get_all_users():
+    """
+    Obtener lista de todos los usuarios
+    """
     try:
-        db_user = usuario_service.update_usuario(db=db, user_id=user_id, usuario=usuario)
+        # Llama la función que obtiene todos los usuarios
+        usersDB = usuario_service.get_all_usuarios(db=g.db)
+        
+        usuarios_response = []
+        for db_user in usersDB:
+            usuarios_response.append({
+                "user_id": db_user.id, 
+                "username": db_user.username,
+                "email": db_user.email,
+                "birth_date": db_user.birth_date.isoformat() if db_user.birth_date else None,
+                "password": "",
+                "friends": [friend.id for friend in db_user.friends] if hasattr(db_user, 'friends') else []
+            })
+            
+        return jsonify(usuarios_response), 200
+        
+    except Exception as e:
+        return jsonify({
+            "error": f"Error interno del servidor: {e}"
+        }), 500
+
+
+# 3. GET - Obtener un usuario específico por ID
+@usuario_bp.route("/usuarios/<int:user_id>/", methods=["GET"])
+def get_user_by_id(user_id: int):
+    """
+    Obtener usuario por ID
+    """
+    try:
+        # Llama la función que trabaja sobre la base de datos
+        db_user = usuario_service.get_usuario_by_id(db=g.db, user_id=user_id)
+        
+        if db_user is None:
+            return jsonify({
+                "error": f"Usuario con ID {user_id} no encontrado."
+            }), 404
+            
+        usuario_response = {
+            "user_id": db_user.id, 
+            "username": db_user.username,
+            "email": db_user.email,
+            "birth_date": db_user.birth_date.isoformat() if db_user.birth_date else None,
+            "password": "",
+            "friends": [friend.id for friend in db_user.friends] if hasattr(db_user, 'friends') else []
+        }
+        
+        return jsonify(usuario_response), 200
+        
+    except Exception as e:
+        return jsonify({
+            "error": f"Error interno del servidor: {e}"
+        }), 500
+
+
+# 4. PUT - Actualizar usuario
+@usuario_bp.route("/usuarios/<int:user_id>/", methods=["PUT"])
+def update_user_by_id(user_id: int):
+    """
+    Actualizar información del usuario
+    """
+    data = request.json
+    if not data:
+        return jsonify({
+            "error": f"No se proporcionaron datos para actualizar el usuario"
+        }), 400
+    
+    try:
+        db_user = usuario_service.update_usuario(db=g.db, user_id=user_id, usuario_data=data)
     
         if db_user is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"El usuario {user_id} no existe."
-            )
-        return Usuario(
-            user_id=db_user.id, 
-            username=db_user.username,
-            email=db_user.email,
-            birth_date=db_user.birth_date,
-            password="",
-            friends=[friend.id for friend in db_user.friends]
-        )
+            return jsonify({
+                "error": f"El usuario {user_id} no existe."
+            }), 404
+            
+        usuario_response = {
+            "user_id": db_user.id, 
+            "username": db_user.username,
+            "email": db_user.email,
+            "birth_date": db_user.birth_date.isoformat() if db_user.birth_date else None,
+            "password": "",
+            "friends": [friend.id for friend in db_user.friends] if hasattr(db_user, 'friends') else []
+        }
         
-    except HTTPException as e:
-        raise e
+        return jsonify(usuario_response), 200
+        
+    except Exception as e:
+        return jsonify({
+            "error": f"Error interno del servidor: {e}"
+        }), 500
 
 
-# Elimina usuario
-@usuario_router.delete(
-    "/{user_id}",
-    status_code=status.HTTP_200_OK,
-    summary="Eliminar usuario por ID"
-)
-def delete_user_by_id(user_id: int, db: Session = Depends(get_db)):
-    success = usuario_service.delete_usuario(db, user_id)
-    
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Usuario con ID {user_id} no encontrado."
-        )
-    
-    return {"message": f"Usuario con ID {user_id} eliminado correctamente."}
+# 5. DELETE - Eliminar usuario
+@usuario_bp.route("/usuarios/<int:user_id>/", methods=["DELETE"])
+def delete_user_by_id(user_id: int):
+    """
+    Eliminar usuario por ID
+    """
+    try:
+        success = usuario_service.delete_usuario(g.db, user_id)
+        
+        if not success:
+            return jsonify({
+                "error": f"El usuario {user_id} no existe."
+            }), 404
+        
+        return jsonify({
+            "message": f"Usuario con ID {user_id} eliminado correctamente."
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            "error": f"Error interno del servidor: {e}"
+        }), 500
 
 # ENDPOINTS DE AMISTAD
 
-@usuario_router.post(
-    "/{user_id}/amigos/",
-    response_model=FriendRelationship,
-    status_code=status.HTTP_201_CREATED,
-    summary="Agregar amigo a usuario"
-)
-def add_friend(user_id: int, friend: FriendRequest, db: Session = Depends(get_db)):
+# 6. POST - Agregar amigo a usuario
+@usuario_bp.route("/usuarios/<int:user_id>/amigos/", methods=["POST"])
+def add_friend(user_id: int):
     """
     Agregar un amigo a un usuario.
     """
-    friend_id = friend.friend_id
+    data = request.json
+    if not data or 'friend_id' not in data:
+        return jsonify({
+                "error": f"El campo friend_id es obligatorio"
+            }), 400
+    
+    friend_id = data['friend_id']
+    
     try:
         # Para que no pueda añadirse como amigo a sí mismo
         if user_id == friend_id:
-            return FriendRelationship(
-                success=False,
-                message="No puedes agregarte a ti mismo como amigo."
-            )
+            return jsonify({
+                "error": "No puedes agregarte a ti mismo como amigo."
+            }), 400
         
-        success = usuario_service.crear_amistad(db, user_id, friend_id)
+        success = usuario_service.crear_amistad(g.db, user_id, friend_id)
         
         if success:    
-            return FriendRelationship(
-                success=True,
-                message=f"Amigo agregado correctamente."
-            )
+            return jsonify({
+                "success": True,
+                "message": f"Amigo agregado correctamente."
+            }), 201
         else:
-            return FriendRelationship(
-                success=False,
-                message="No se pudo agregar el amigo. Verifica que ambos usuarios existan."
-            )
+            return jsonify({
+                "error": "No se pudo agregar el amigo. Verifica que ambos usuarios existan."
+            }), 400
             
     except Exception as e:
-        return FriendRelationship(
-            success=False,
-            message=f"Error interno del servidor: {str(e)}"
-        )
+        return jsonify({
+            "error": f"Error interno del servidor: {str(e)}"
+        }), 500
 
-@usuario_router.get(
-    "/{user_id}/amigos/",
-    response_model=List[Usuario],
-    summary="Obtener lista de amigos del usuario"
-)
-def get_user_friends(user_id: int, db: Session = Depends(get_db)):
+
+# 7. GET - Obtener lista de amigos del usuario
+@usuario_bp.route("/usuarios/<int:user_id>/amigos/", methods=["GET"])
+def get_user_friends(user_id: int):
     """
     Obtiene todos los amigos de un usuario
     """
     try:
-        friends = usuario_service.obtener_amigos(db, user_id)
+        friends = usuario_service.obtener_amigos(g.db, user_id)
         
-        # Convierte a Usuario
+        # Convierte a formato de respuesta
         friend_responses = []
         for friend in friends:
-            friend_responses.append(Usuario(
-                user_id=friend.id,
-                username=friend.username,
-                email=friend.email,
-                birth_date=friend.birth_date,
-                password="",  # No incluye contraseñas
-                friends=[] # No incluye amigos
-            ))
+            friend_responses.append({
+                "user_id": friend.id,
+                "username": friend.username,
+                "email": friend.email,
+                "birth_date": friend.birth_date.isoformat() if friend.birth_date else None,
+                "password": "",  # No incluye contraseñas
+                "friends": [] # No incluye amigos
+            })
         
-        return friend_responses
+        return jsonify(friend_responses), 200
         
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error obteniendo amigos: {str(e)}"
-        )
+        return jsonify({
+            "error": f"Error interno del servidor: {str(e)}"
+        }), 500
 
-@usuario_router.get(
-    "/{user_id}/amigos/{friend_id}",
-    response_model=Usuario,
-    summary="Verificar si existe amistad entre usuarios"
-)
-def get_friend_info(user_id: int, friend_id: int, db: Session = Depends(get_db)):
-    db_user = usuario_service.get_usuario_by_id(db=db, user_id=user_id)
-    # Comprueba si el usuario existe
-    if db_user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Usuario con ID {user_id} no encontrado."
-        )
 
-    db_friend = usuario_service.get_usuario_by_id(db=db, user_id=friend_id)
-    # Comprueba si el amigo existe
-    if db_friend is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"El usuario de ID {user_id} no tiene ningún amigo con ID {friend_id}."
-        )
-    # Devuelve información de usuario
-    return Usuario(
-            user_id=db_friend.id, 
-            username=db_friend.username,
-            email=db_friend.email,
-            birth_date=db_friend.birth_date,
-            password="",
-            friends=[friend.id for friend in db_friend.friends]
-        )
+# 8. GET - Verificar si existe amistad entre usuarios
+@usuario_bp.route("/usuarios/<int:user_id>/amigos/<int:friend_id>/", methods=["GET"])
+def get_friend_info(user_id: int, friend_id: int):
+    """
+    Verificar si existe amistad entre usuarios
+    """
+    try:
+        db_user = usuario_service.get_usuario_by_id(db=g.db, user_id=user_id)
+        # Comprueba si el usuario existe
+        if db_user is None:
+            return jsonify({
+                "error": f"Usuario con ID {user_id} no encontrado."
+            }), 404
 
-@usuario_router.delete(
-    "/{user_id}/amigos/{friend_id}",
-    response_model=FriendRelationship,
-    summary="Eliminar amigo de usuario"
-)
-def remove_friend(
-    user_id: int,
-    friend_id: int,
-    db: Session = Depends(get_db)
-):
+        db_friend = usuario_service.get_usuario_by_id(db=g.db, user_id=friend_id)
+        # Comprueba si el amigo existe
+        if db_friend is None:
+            return jsonify({
+                "error": f"El usuario de ID {user_id} no tiene ningún amigo con ID {friend_id}."
+            }), 404
+        
+        # Devuelve información de usuario
+        friend_response = {
+            "user_id": db_friend.id, 
+            "username": db_friend.username,
+            "email": db_friend.email,
+            "birth_date": db_friend.birth_date.isoformat() if db_friend.birth_date else None,
+            "password": "",
+            "friends": [friend.id for friend in db_friend.friends] if hasattr(db_friend, 'friends') else []
+        }
+        
+        return jsonify(friend_response), 200
+        
+    except Exception as e:
+        return jsonify({
+            "error": f"Error interno del servidor: {str(e)}"
+        }), 500
+
+
+# 9. DELETE - Eliminar amigo de usuario
+@usuario_bp.route("/usuarios/<int:user_id>/amigos/<int:friend_id>/", methods=["DELETE"])
+def remove_friend(user_id: int, friend_id: int):
     """
     Eliminar un amigo de la lista de amigos de un usuario.
     """
     try:
-        success = usuario_service.eliminar_amistad(db, user_id, friend_id)
+        success = usuario_service.eliminar_amistad(g.db, user_id, friend_id)
         
         if success:
-            return FriendRelationship(
-                success=True,
-                message=f"Amigo eliminado correctamente."
-            )
+            return jsonify({
+                "success": True,
+                "message": f"Amigo eliminado correctamente."
+            }), 200
         else:
-            return FriendRelationship(
-                success=False,
-                message="No se pudo eliminar el amigo. Verifica que la amistad exista."
-            )
+            return jsonify({
+                "error": "No se pudo eliminar el amigo. Verifica que la amistad exista."
+            }), 400
             
     except Exception as e:
-        return FriendRelationship(
-            success=False,
-            message=f"Error interno del servidor: {str(e)}"
-        )
+        return jsonify({
+            "error": f"Error interno del servidor: {str(e)}"
+        }), 500

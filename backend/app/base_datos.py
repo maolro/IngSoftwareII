@@ -33,10 +33,16 @@ def init_db():
     """
     # Importamos los modelos aquí para que 'Base' los reconozca
     # ¡Tendrás que importar aquí todos tus modelos!
-    from .objetos import cerveza
+    from .objetos import usuario, cerveza, galardon
     # from .objetos import degustacion # (Cuando tu compañero lo cree)
     
     print(f"Creando tablas en la base de datos en: {DB_PATH}")
+
+    # Deputación para ver tablas creadas
+    print("Tablas a crear:")
+    for table_name, table in Base.metadata.tables.items():
+        print(f"   - {table_name}")
+
     Base.metadata.create_all(bind=engine)
     print("Tablas creadas exitosamente.")
 
