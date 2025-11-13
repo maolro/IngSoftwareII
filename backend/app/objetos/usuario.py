@@ -66,6 +66,12 @@ class UsuarioDB(Base):
         back_populates="usuario",
         cascade="all, delete-orphan"  
     )
+    # Gestión de degustaciones
+    degustaciones = relationship(
+        "DegustacionDB", 
+        back_populates="usuario",
+        cascade="all, delete-orphan"
+    )
 
     def to_dict(self):
         """Convierte el usuario a un dict para respuestas de la API"""
@@ -77,7 +83,8 @@ class UsuarioDB(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "friends": [friend.id for friend in self.friends],
-            "galardones_obtenidos": [galardon.to_dict() for galardon in self.galardones_obtenidos]
+            "galardones_obtenidos": [galardon.to_dict() for galardon in self.galardones_obtenidos],
+            "degustaciones": [degustacion.to_dict() for degustacion in self.degustaciones] 
         }
 
 

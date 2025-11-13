@@ -5,7 +5,8 @@ from app.base_datos import SessionLocal, init_db
 from app.controladores.cerveza_controlador import cerveza_bp
 from app.controladores.galardon_controlador import galardon_bp
 from app.controladores.usuario_controlador import usuario_bp
-
+from app.controladores.degustacion_controlador import degustacion_bp
+from app.controladores.cerveceria_controlador import cerveceria_bp
 
 # --- Configuración de la App ---
 app = Flask(__name__)
@@ -36,7 +37,8 @@ def close_db_session(exception=None):
 app.register_blueprint(cerveza_bp, url_prefix='/api')
 app.register_blueprint(galardon_bp, url_prefix='/api')
 app.register_blueprint(usuario_bp, url_prefix='/api')
-
+app.register_blueprint(degustacion_bp, url_prefix='/api')
+app.register_blueprint(cerveceria_bp, url_prefix='/api')
 
 # --- Ruta de prueba (la que tenías) ---
 @app.route("/")

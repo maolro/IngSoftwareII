@@ -1,7 +1,8 @@
 # Entidad de cervecería con sus campos
-
 from sqlalchemy import Column, Integer, String, Float
 from app.base_datos import Base
+from sqlalchemy.orm import relationship
+
 # Si vas a usar otro manejador de conexiones, cambiar la importación.
 
 class Cerveceria(Base):
@@ -20,6 +21,11 @@ class Cerveceria(Base):
     telefono = Column(String)
     horario = Column(String)
     foto = Column(String)
+
+    # Relaciones
+    degustaciones = relationship("DegustacionDB",  back_populates="cerveceria",
+        cascade="all, delete-orphan"
+    )
     
     # Nota: 'me_gusta_total' (RF-3.7) no es una columna persistente,
     # sino un valor calculado en el servicio.

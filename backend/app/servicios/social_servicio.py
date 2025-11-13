@@ -1,1 +1,0 @@
-# Funciones relacionadas con el RF-2 (Funcionalidades sociales)

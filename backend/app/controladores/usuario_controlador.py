@@ -130,7 +130,7 @@ def update_user_by_id(user_id: int):
         }), 400
     
     try:
-        db_user = usuario_service.update_usuario(db=g.db, user_id=user_id, usuario_data=data)
+        db_user = usuario_service.update_usuario(db=g.db, user_id=user_id, usuario=data)
     
         if db_user is None:
             return jsonify({
