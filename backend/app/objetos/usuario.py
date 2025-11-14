@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 from datetime import date
 from sqlalchemy import TIMESTAMP, Column, Date, ForeignKey, Integer, String, Table, text
 from sqlalchemy.orm import relationship
-from ..database import Base
+from app.base_datos import Base
 
 # Tabla auxiliar de amistades
 user_friends = Table(
@@ -60,6 +60,25 @@ class UsuarioDB(Base):
         secondaryjoin=id == user_friends.c.friend_id,
         backref="friend_of"
     )
+    # Gestión de galardones
+    galardones_obtenidos = relationship(
+        "UsuarioGalardon", 
+        back_populates="usuario",
+        cascade="all, delete-orphan"  
+    )
+
+    def to_dict(self):
+        """Convierte el usuario a un dict para respuestas de la API"""
+        return {
+            "id": self.id,
+            "username": self.username,
+            "email": self.email,
+            "birth_date": self.birth_date.isoformat() if self.birth_date else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "friends": [friend.id for friend in self.friends],
+            "galardones_obtenidos": [galardon.to_dict() for galardon in self.galardones_obtenidos]
+        }
 
 
 # Uso

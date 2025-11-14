@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from uuid import uuid4
 from sqlalchemy import Connection, MetaData, Table, create_engine, select, text, except_
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
@@ -62,22 +62,28 @@ class UsuarioServicio:
         """
         return db.query(UsuarioDB).all()
 
-    def create_usuario(self, db: Session, usuario: UsuarioCreate) -> UsuarioDB:
+    def create_usuario(self, db: Session, usuario: dict) -> UsuarioDB:
         """
         (POST) Crea un nuevo usuario en la base de datos.
         Hashea la contraseña antes de guardarla.
         """
+        # Filtramos la entrada para incluir solo columnas del modelo
+        atributos_modelo = UsuarioDB.__table__.columns.keys()
+        data_limpia = {k: v for k, v in usuario.items() if k in atributos_modelo}  
+        
         # Hasheamos la contraseña
-        hashed_password = self.get_password_hash(usuario.password)
+        if 'password' in usuario:
+            data_limpia["password_hash"] = self.get_password_hash(usuario['password'])  
         
-        # Creamos el objeto UsuarioDB (SQLAlchemy)
-        db_user = UsuarioDB(
-            username=usuario.username,
-            email=usuario.email,
-            password_hash=hashed_password,
-            birth_date=usuario.birth_date,
-        )
-        
+        # Convertimos adecuadamente la fecha si es un string
+        if 'birth_date' in data_limpia and isinstance(data_limpia['birth_date'], str):
+            try:
+                data_limpia['birth_date'] = datetime.strptime(data_limpia['birth_date'], '%Y-%m-%d').date()
+            except ValueError as e:
+                raise ValueError(f"Formato invalido para la fecha. Usa YYYY-MM-DD: {e}")
+            
+        # Añadimos al usuario
+        db_user = UsuarioDB(**data_limpia)
         db.add(db_user)
         try:
             db.commit()
