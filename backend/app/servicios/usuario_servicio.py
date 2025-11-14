@@ -94,7 +94,7 @@ class UsuarioServicio:
             # Relanzamos la excepción para que el controlador la maneje
             raise e
 
-    def update_usuario(self, db: Session, user_id: int, usuario: Usuario) -> Optional[UsuarioDB]:
+    def update_usuario(self, db: Session, user_id: int, usuario: dict) -> Optional[UsuarioDB]:
         """
         (PUT) Actualiza un usuario existente.
         """
@@ -102,11 +102,30 @@ class UsuarioServicio:
         if not db_user:
             return None # El controlador devolverá 404
 
-        # Actualizamos los campos basados en el modelo 'Usuario'
-        db_user.username = usuario.username
-        db_user.email = usuario.email
-        db_user.birth_date = usuario.birth_date
-        db_user.friends = usuario.friends
+        # Actualiza los campos basados en el modelo 'Usuario'
+        for key, value in usuario.items():
+            # Solo actualizar si el atributo existe en el modelo
+            if hasattr(db_user, key):
+                # Convertir birth_date de string a date object si es necesario
+                if key == "birth_date" and isinstance(value, str):
+                    try:
+                        value = datetime.strptime(value, '%Y-%m-%d').date()
+                    except ValueError:
+                        raise ValueError(f"Formato de fecha inválido: {value}. Use YYYY-MM-DD")
+                
+                # Validación para username único 
+                if key == "username" and value != db_user.username:
+                    existing_user = self.get_usuario_by_username(db, value)
+                    if existing_user:
+                        raise ValueError("No puedes cambiar el username al de un usuario que ya existe")
+                
+                # Validación para email único
+                if key == "email" and value != db_user.email:
+                    existing_user = self.get_usuario_by_email(db, value)
+                    if existing_user:
+                        raise ValueError("El email ya está registrado por otro usuario")
+                    
+                setattr(db_user, key, value)
         
         db.add(db_user)
         try:

@@ -1,40 +1,36 @@
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from datetime import date
+import requests
+import json
 import time
+import random
 
-# --- Importaciones de tu proyecto ---
-from app.database import Base, get_db
-from app.controladores.usuario_controlador import usuario_router
-
-# --- Configuración de la App de Prueba ---
-app = FastAPI()
-app.include_router(usuario_router)
-client = TestClient(app)
+# --- Configuración ---
+BASE_URL = "http://localhost:8000/api"
 
 class UsuarioTester:
     """Clase para realizar pruebas automatizadas de los endpoints de usuarios"""
     
     def __init__(self):
-        self.created_users = []  # Track users created during tests
+        self.created_ids = {
+            'usuarios': []
+        }
         self.test_results = {
             'passed': 0,
             'failed': 0,
             'errors': []
         }
+        self.total_tests = 0
     
-    def print_header(self, message):
-        """Print a formatted header"""
-        print(f"\n{'='*60}")
-        print(f"{message}")
-        print(f"{'='*60}")
+    def print_test_header(self, titulo):
+        """Imprime un cabezal bonito para cada prueba"""
+        print("\n" + "="*60)
+        print(f" 👤 PRUEBA: {titulo}")
+        print("="*60)
     
     def print_success(self, message):
         """Print success message"""
         print(f"✅ {message}")
         self.test_results['passed'] += 1
+        self.total_tests += 1
     
     def print_error(self, message, error=None):
         """Print error message"""
@@ -42,22 +38,52 @@ class UsuarioTester:
         if error:
             print(f"   Error: {error}")
         self.test_results['failed'] += 1
+        self.total_tests += 1
         self.test_results['errors'].append(message)
     
     def print_info(self, message):
         """Print info message"""
-        print(f"\n{'='*60}\n")
-        print(f"ℹ️  {message}")
+        print(f"\nℹ️  {message}")
     
-    def wait_for_operation(self, seconds=1):
+    def wait_for_operation(self, seconds=0.5):
         """Wait between operations to avoid race conditions"""
         time.sleep(seconds)
-    
-    def test_create_user(self, username: str, email: str, password: str, birth_date: str, expected_success=True):
-        """Prueba crear un usuario nuevo"""
-        self.print_header(f"CREANDO USUARIO: {username}")
+
+    def get_success_percentage(self):
+        """Calculate and return success percentage"""
+        if self.total_tests == 0:
+            return 0.0
+        return (self.test_results['passed'] / self.total_tests) * 100
+
+    def print_progress(self):
+        """Print current test progress"""
+        success_pct = self.get_success_percentage()
+        print(f"\n📊 Progreso: {self.test_results['passed']}/{self.total_tests} pruebas exitosas ({success_pct:.1f}%)")
+
+    def cleanup(self):
+        """Limpia todos los datos creados durante las pruebas"""
+        self.print_test_header("LIMPIANDO DATOS DE PRUEBA")
         
-        user_data = {
+        cleanup_count = 0
+        
+        # Limpiar usuarios
+        for usuario_id in self.created_ids['usuarios'][:]:
+            try:
+                resp = requests.delete(f"{BASE_URL}/usuarios/{usuario_id}")
+                if resp.status_code in [200, 204]:
+                    print(f"✅ Usuario eliminado: {usuario_id}")
+                    self.created_ids['usuarios'].remove(usuario_id)
+                    cleanup_count += 1
+                else:
+                    print(f"⚠️  No se pudo eliminar usuario {usuario_id}: {resp.status_code}")
+            except Exception as e:
+                print(f"❌ Error eliminando usuario {usuario_id}: {e}")
+        
+        print(f"🧹 Limpieza completada: {cleanup_count} elementos eliminados")
+
+    def test_crear_usuario(self, username, email, password, birth_date, expected_success=True):
+        """Prueba para crear usuario"""
+        usuario_data = {
             "username": username,
             "email": email,
             "password": password,
@@ -65,365 +91,449 @@ class UsuarioTester:
         }
         
         try:
-            response = client.post("/usuarios/", json=user_data)
-            result = response.json()
+            resp = requests.post(f"{BASE_URL}/usuarios/", json=usuario_data)
             
-            print(f"Status Code: {response.status_code}")
-            print(f"Response: {result}")
-            
-            if expected_success and response.status_code == 201:
-                user_id = result.get('user_id')
-                if user_id:
-                    self.created_users.append(user_id)
-                    self.print_success(f"Usuario '{username}' creado exitosamente con ID: {user_id}")
-                    return user_id
-                else:
-                    self.print_error("Usuario creado pero no se recibió ID")
-                    return None
-            elif not expected_success and response.status_code != 201:
-                self.print_success(f"Creación fallida como se esperaba: {result.get('detail', '')}")
+            if expected_success and resp.status_code == 201:
+                usuario_id = resp.json()['id']
+                self.created_ids['usuarios'].append(usuario_id)
+                self.print_success(f"Usuario creado: {username} (ID: {usuario_id})")
+                return usuario_id
+            elif not expected_success and resp.status_code != 201:
+                self.print_success(f"Creación fallida como se esperaba: {resp.status_code}")
                 return None
             else:
-                self.print_error(f"Resultado inesperado. Esperado éxito: {expected_success}")
+                self.print_error(f"Resultado inesperado. {resp.status_code} - {resp.json()['error']}")
                 return None
                 
         except Exception as e:
-            self.print_error(f"Error creando usuario '{username}'", str(e))
+            self.print_error(f"Error creando usuario: {e}")
             return None
-    
-    def test_get_user(self, user_id: int, expected_success=True):
-        """Prueba obtener un usuario por ID"""
-        self.print_header(f"OBTENIENDO USUARIO ID: {user_id}")
+
+    def test_obtener_usuario_por_id(self, usuario_id, expected_success=True):
+        """Prueba obtener usuario por ID"""
+        self.print_test_header(f"OBTENER USUARIO POR ID: {usuario_id}")
         
         try:
-            response = client.get(f"/usuarios/{user_id}")
-            result = response.json()
+            resp = requests.get(f"{BASE_URL}/usuarios/{usuario_id}/")
             
-            print(f"Status Code: {response.status_code}")
-            
-            if expected_success and response.status_code == 200:
-                self.print_success(f"Usuario obtenido: {result.get('username', 'N/A')}")
-                return result
-            elif not expected_success and response.status_code == 404:
+            if expected_success and resp.status_code == 200:
+                detalle = resp.json()
+                self.print_success(f"Usuario obtenido: {detalle['username']}")
+                return detalle
+            elif not expected_success and resp.status_code == 404:
                 self.print_success("Usuario no encontrado (como se esperaba)")
                 return None
             else:
-                self.print_error(f"Resultado inesperado al obtener usuario {user_id}")
+                self.print_error(f"Resultado inesperado. {resp.status_code} - {resp.json()['error']}")
                 return None
                 
         except Exception as e:
-            self.print_error(f"Error obteniendo usuario {user_id}", str(e))
+            self.print_error(f"Error obteniendo usuario: {e}")
             return None
-    
-    def test_get_all_users(self):
+
+    def test_obtener_todos_usuarios(self, expected_min_count=0):
         """Prueba obtener todos los usuarios"""
-        self.print_header("OBTENIENDO TODOS LOS USUARIOS")
+        self.print_test_header("OBTENER TODOS LOS USUARIOS")
         
         try:
-            response = client.get("/usuarios/")
-            result = response.json()
+            resp = requests.get(f"{BASE_URL}/usuarios/")
             
-            print(f"Status Code: {response.status_code}")
-            print(f"Total de usuarios: {len(result)}")
-            
-            if response.status_code == 200:
-                self.print_success(f"Obtenidos {len(result)} usuarios exitosamente")
-                return result
+            if resp.status_code == 200:
+                usuarios = resp.json()
+                if len(usuarios) >= expected_min_count:
+                    self.print_success(f"Obtenidos {len(usuarios)} usuarios")
+                    return usuarios
+                else:
+                    self.print_error(f"Se esperaban al menos {expected_min_count} usuarios, se obtuvieron {len(usuarios)}")
+                    return usuarios
             else:
-                self.print_error("Error obteniendo todos los usuarios")
+                self.print_error(f"Error obteniendo usuarios. Código: {resp.status_code}")
                 return None
                 
         except Exception as e:
-            self.print_error("Error obteniendo todos los usuarios", str(e))
+            self.print_error(f"Error obteniendo usuarios: {e}")
             return None
-    
-    def test_update_user(self, user_id: int, username: str, email: str, birth_date: str, expected_success=True):
-        """Prueba actualizar un usuario"""
-        self.print_header(f"ACTUALIZANDO USUARIO ID: {user_id}")
-        
-        update_data = {
-            "user_id": user_id,
-            "username": username,
-            "email": email,
-            "birth_date": birth_date,
-            "password": "updated_password",
-            "friends": []
-        }
+
+    def test_actualizar_usuario(self, usuario_id, nuevos_datos, expected_success=True):
+        """Prueba actualizar usuario"""
+        self.print_test_header(f"ACTUALIZAR USUARIO: {usuario_id}")
         
         try:
-            response = client.put(f"/usuarios/{user_id}", json=update_data)
-            result = response.json()
+            resp = requests.put(f"{BASE_URL}/usuarios/{usuario_id}/", json=nuevos_datos)
             
-            print(f"Status Code: {response.status_code}")
-            print(f"Response: {result}")
-            
-            if expected_success and response.status_code == 200:
-                if result.get('username') == username:
-                    self.print_success(f"Usuario actualizado a: {username}")
-                    return result
-                else:
-                    self.print_error("Usuario actualizado pero datos no coinciden")
-                    return None
-            elif not expected_success and response.status_code != 200:
+            if expected_success and resp.status_code == 200:
+                usuario_actualizado = resp.json()
+                self.print_success(f"Usuario actualizado: {resp.json()['username']}")
+                return usuario_actualizado
+            elif not expected_success and resp.status_code != 200:
                 self.print_success("Actualización fallida como se esperaba")
                 return None
             else:
-                self.print_error("Resultado inesperado en actualización")
+                self.print_error(f"Resultado inesperado. {resp.status_code} - {resp.json()['error']}")
                 return None
                 
         except Exception as e:
-            self.print_error(f"Error actualizando usuario {user_id}", str(e))
+            self.print_error(f"Error actualizando usuario: {e}")
             return None
-    
-    def test_delete_user(self, user_id: int, expected_success=True):
-        """Prueba eliminar un usuario"""
-        self.print_header(f"ELIMINANDO USUARIO ID: {user_id}")
+
+    def test_eliminar_usuario(self, usuario_id, expected_success=True):
+        """Prueba eliminar usuario"""
+        self.print_test_header(f"ELIMINAR USUARIO: {usuario_id}")
         
         try:
-            response = client.delete(f"/usuarios/{user_id}")
-            result = response.json()
+            resp = requests.delete(f"{BASE_URL}/usuarios/{usuario_id}")
             
-            print(f"Status Code: {response.status_code}")
-            print(f"Response: {result}")
-            
-            if expected_success and response.status_code == 200:
-                self.print_success(f"Usuario {user_id} eliminado exitosamente")
-                if user_id in self.created_users:
-                    self.created_users.remove(user_id)
+            if expected_success and resp.status_code == 200:
+                self.print_success(f"Usuario {usuario_id} eliminado exitosamente")
+                if usuario_id in self.created_ids['usuarios']:
+                    self.created_ids['usuarios'].remove(usuario_id)
                 return True
-            elif not expected_success and response.status_code == 404:
+            elif not expected_success and resp.status_code == 404:
                 self.print_success("Eliminación fallida como se esperaba (usuario no existe)")
                 return False
             else:
-                self.print_error("Resultado inesperado en eliminación")
+                self.print_error(f"Resultado inesperado. {resp.status_code} - {resp.json()['error']}")
                 return False
                 
         except Exception as e:
-            self.print_error(f"Error eliminando usuario {user_id}", str(e))
+            self.print_error(f"Error eliminando usuario: {e}")
             return False
-    
-    def test_add_friend(self, user_id: int, friend_id: int, expected_success=True):
-        """Prueba agregar un amigo"""
-        self.print_header(f"AGREGANDO AMIGO: Usuario {user_id} -> Amigo {friend_id}")
+
+    def test_agregar_amigo(self, usuario_id, amigo_id, expected_success=True):
+        """Prueba agregar amigo a usuario"""
+        self.print_test_header(f"AGREGAR AMIGO: Usuario {usuario_id} -> Amigo {amigo_id}")
         
-        friend_request = {"friend_id": friend_id}
+        amigo_data = {
+            "friend_id": amigo_id
+        }
         
         try:
-            response = client.post(f"/usuarios/{user_id}/amigos/", json=friend_request)
-            result = response.json()
+            resp = requests.post(f"{BASE_URL}/usuarios/{usuario_id}/amigos/", json=amigo_data)
             
-            print(f"Status Code: {response.status_code}")
-            print(f"Response: {result}")
-            
-            if expected_success and response.status_code == 201 and result.get('success'):
-                self.print_success(f"Amistad creada: {user_id} -> {friend_id}")
-                return True
-            elif not expected_success and (response.status_code != 201 or not result.get('success')):
-                self.print_success("Amistad no creada (como se esperaba)")
-                return False
-            else:
-                self.print_error("Resultado inesperado al agregar amigo")
-                return False
-                
-        except Exception as e:
-            self.print_error(f"Error agregando amigo {friend_id} a usuario {user_id}", str(e))
-            return False
-    
-    def test_get_user_friends(self, user_id: int, expected_count=None):
-        """Prueba obtener lista de amigos de un usuario"""
-        self.print_header(f"OBTENIENDO AMIGOS DEL USUARIO {user_id}")
-        
-        try:
-            response = client.get(f"/usuarios/{user_id}/amigos/")
-            result = response.json()
-            
-            print(f"Status Code: {response.status_code}")
-            print(f"Amigos encontrados: {len(result)}")
-            
-            if response.status_code == 200:
-                if expected_count is None or len(result) == expected_count:
-                    self.print_success(f"Obtenidos {len(result)} amigos exitosamente")
-                    return result
+            if expected_success and resp.status_code == 201:
+                resultado = resp.json()
+                if resultado.get('success'):
+                    self.print_success(f"Amigo agregado: {usuario_id} -> {amigo_id}")
+                    return True
                 else:
-                    self.print_error(f"Se esperaban {expected_count} amigos, se obtuvieron {len(result)}")
-                    return result
+                    self.print_error(f"Amigo no agregado: {resultado.get('error', 'Error desconocido')}")
+                    return False
+            elif not expected_success and resp.status_code != 201:
+                self.print_success("Agregar amigo falló como se esperaba")
+                return False
             else:
-                self.print_error("Error obteniendo amigos del usuario")
+                self.print_error(f"Resultado inesperado. {resp.status_code} - {resp.json()['error']}")
+                return False
+                
+        except Exception as e:
+            self.print_error(f"Error agregando amigo: {e}")
+            return False
+
+    def test_obtener_amigos_usuario(self, usuario_id, expected_min_count=0):
+        """Prueba obtener amigos de usuario"""
+        self.print_test_header(f"OBTENER AMIGOS DE USUARIO: {usuario_id}")
+        
+        try:
+            resp = requests.get(f"{BASE_URL}/usuarios/{usuario_id}/amigos/")
+            
+            if resp.status_code == 200:
+                amigos = resp.json()
+                if len(amigos) >= expected_min_count:
+                    self.print_success(f"Obtenidos {len(amigos)} amigos del usuario")
+                    return amigos
+                else:
+                    self.print_error(f"Se esperaban al menos {expected_min_count} amigos, se obtuvieron {len(amigos)}")
+                    return amigos
+            else:
+                self.print_error(f"Error obteniendo amigos. {resp.status_code} - {resp.json()['error']}")
                 return None
                 
         except Exception as e:
-            self.print_error(f"Error obteniendo amigos del usuario {user_id}", str(e))
+            self.print_error(f"Error obteniendo amigos: {e}")
             return None
-    
-    def test_get_friend_details(self, user_id: int, friend_id: int, expected_success=True):
-        """Prueba obtener detalles de un amigo específico"""
-        self.print_header(f"OBTENIENDO DETALLES DEL AMIGO {friend_id} PARA USUARIO {user_id}")
+
+    def test_obtener_detalles_amigo(self, usuario_id, amigo_id, expected_success=True):
+        """Prueba obtener detalles de amigo específico"""
+        self.print_test_header(f"OBTENER DETALLES DE AMIGO: Usuario {usuario_id} -> Amigo {amigo_id}")
         
         try:
-            response = client.get(f"/usuarios/{user_id}/amigos/{friend_id}")
-            result = response.json()
+            resp = requests.get(f"{BASE_URL}/usuarios/{usuario_id}/amigos/{amigo_id}/")
             
-            print(f"Status Code: {response.status_code}")
-            
-            if expected_success and response.status_code == 200:
-                self.print_success(f"Detalles del amigo obtenidos: {result.get('username', 'N/A')}")
-                return result
-            elif not expected_success and response.status_code == 404:
+            if expected_success and resp.status_code == 200:
+                detalle_amigo = resp.json()
+                self.print_success(f"Detalles de amigo obtenidos: {detalle_amigo['username']}")
+                return detalle_amigo
+            elif not expected_success and resp.status_code == 404:
                 self.print_success("Amigo no encontrado (como se esperaba)")
                 return None
             else:
-                self.print_error("Resultado inesperado al obtener detalles del amigo")
+                self.print_error(f"Resultado inesperado. {resp.status_code} - {resp.json()['error']}")
                 return None
                 
         except Exception as e:
-            self.print_error(f"Error obteniendo detalles del amigo {friend_id}", str(e))
+            self.print_error(f"Error obteniendo detalles de amigo: {e}")
             return None
-    
-    def test_remove_friend(self, user_id: int, friend_id: int, expected_success=True):
-        """Prueba eliminar un amigo"""
-        self.print_header(f"ELIMINANDO AMIGO: Usuario {user_id} -> Amigo {friend_id}")
+
+    def test_eliminar_amigo(self, usuario_id, amigo_id, expected_success=True):
+        """Prueba eliminar amigo de usuario"""
+        self.print_test_header(f"ELIMINAR AMIGO: Usuario {usuario_id} -> Amigo {amigo_id}")
         
         try:
-            response = client.delete(f"/usuarios/{user_id}/amigos/{friend_id}")
-            result = response.json()
+            resp = requests.delete(f"{BASE_URL}/usuarios/{usuario_id}/amigos/{amigo_id}/")
             
-            print(f"Status Code: {response.status_code}")
-            print(f"Response: {result}")
-            
-            if expected_success and response.status_code == 200 and result.get('success'):
-                self.print_success(f"Amigo {friend_id} eliminado exitosamente")
-                return True
-            elif not expected_success and (response.status_code != 200 or not result.get('success')):
-                self.print_success("Amigo no eliminado (como se esperaba)")
+            if expected_success and resp.status_code == 200:
+                resultado = resp.json()
+                if resultado.get('success'):
+                    self.print_success(f"Amigo eliminado: {usuario_id} -> {amigo_id}")
+                    return True
+                else:
+                    self.print_error(f"Amigo no eliminado: {resultado.get('error', 'Error desconocido')}")
+                    return False
+            elif not expected_success and resp.status_code != 200:
+                self.print_success("Eliminar amigo falló como se esperaba")
                 return False
             else:
-                self.print_error("Resultado inesperado al eliminar amigo")
+                self.print_error(f"Resultado inesperado. {resp.status_code} - {resp.json()['error']}")
                 return False
                 
         except Exception as e:
-            self.print_error(f"Error eliminando amigo {friend_id} del usuario {user_id}", str(e))
+            self.print_error(f"Error eliminando amigo: {e}")
             return False
-    
+
+    def test_servidor_conectado(self):
+        """Prueba conexión al servidor"""
+        self.print_test_header("CONEXIÓN AL SERVIDOR")
+        
+        try:
+            home_resp = requests.get("http://localhost:8000/")
+            home_resp.raise_for_status()
+            self.print_success(f"Servidor conectado: {home_resp.json()['message']}")
+            return True
+        except requests.exceptions.ConnectionError:
+            self.print_error("No se pudo conectar al servidor")
+            return False
+        except Exception as e:
+            self.print_error(f"Error inesperado: {e}")
+            return False
+
+    def test_crear_usuario_duplicado(self, usuario_data):
+        """Prueba crear usuario duplicado"""
+        self.print_test_header("CREAR USUARIO DUPLICADO")
+        
+        try:
+            resp = requests.post(f"{BASE_URL}/usuarios/", json=usuario_data)
+            
+            if resp.status_code == 409:
+                self.print_success("Error 409 recibido correctamente (conflicto de duplicados)")
+                return True
+            else:
+                self.print_error(f"Se esperaba 409 pero se recibió {resp.status_code}")
+                return False
+                
+        except Exception as e:
+            self.print_error(f"Error creando usuario duplicado: {e}")
+            return False
+
+    def test_agregar_amigo_a_si_mismo(self, usuario_id):
+        """Prueba agregarse a sí mismo como amigo"""
+        self.print_test_header(f"AGREGARSE A SÍ MISMO COMO AMIGO: {usuario_id}")
+        
+        amigo_data = {
+            "friend_id": usuario_id
+        }
+        
+        try:
+            resp = requests.post(f"{BASE_URL}/usuarios/{usuario_id}/amigos/", json=amigo_data)
+            
+            if resp.status_code == 400:
+                self.print_success("Error 400 recibido correctamente (no se puede agregar a sí mismo)")
+                return True
+            else:
+                self.print_error(f"Se esperaba 400 pero se recibió {resp.status_code}")
+                return False
+                
+        except Exception as e:
+            self.print_error(f"Error probando auto-amistad: {e}")
+            return False
+
     def run_comprehensive_test(self):
-        """Ejecuta una prueba completa de todos los endpoints"""
-        self.print_header("INICIANDO PRUEBA COMPREHENSIVA")
+        """Ejecuta una prueba completa de todos los endpoints de usuarios"""
+        self.print_test_header("INICIANDO PRUEBA COMPREHENSIVA DE USUARIOS")
+        
+        # Paso 0: Verificar servidor
+        self.print_info("Paso 0: Verificando conexión al servidor...")
+        if not self.test_servidor_conectado():
+            return
         
         # Paso 1: Crear usuarios de prueba
         self.print_info("Paso 1: Creando usuarios de prueba...")
-        user1_id = self.test_create_user("test_user_1", "test1@example.com", "pass123", "1990-01-01")
+        
+        usuario1_id = self.test_crear_usuario(
+            "usuario_prueba_1", 
+            "prueba1@test.com",
+            "password123",
+            "1990-01-01"
+        )
         self.wait_for_operation()
         
-        user2_id = self.test_create_user("test_user_2", "test2@example.com", "pass456", "1992-02-02")
+        usuario2_id = self.test_crear_usuario(
+            "usuario_prueba_2",
+            "prueba2@test.com", 
+            "password456",
+            "1992-02-02"
+        )
         self.wait_for_operation()
         
-        user3_id = self.test_create_user("test_user_3", "test3@example.com", "pass789", "1995-03-03")
+        usuario3_id = self.test_crear_usuario(
+            "usuario_prueba_3",
+            "prueba3@test.com",
+            "password789", 
+            "1995-03-03"
+        )
         self.wait_for_operation()
         
-        if not all([user1_id, user2_id, user3_id]):
+        if not all([usuario1_id, usuario2_id, usuario3_id]):
             self.print_error("No se pudieron crear usuarios de prueba. Abortando prueba.")
-            if user1_id: self.test_delete_user(user1_id)
-            if user2_id:self.test_delete_user(user2_id)
-            if user3_id: self.test_delete_user(user3_id)
+            self.cleanup()
             return
         
-        # Paso 2: Probar relaciones de amistad
-        self.print_info("Paso 2: Probando relaciones de amistad...")
-        self.test_add_friend(user1_id, user2_id)
+        # Paso 2: Probar obtención de usuarios
+        self.print_info("Paso 2: Probando obtención de usuarios...")
+        self.test_obtener_usuario_por_id(usuario1_id)
         self.wait_for_operation()
         
-        self.test_add_friend(user1_id, user3_id)
+        self.test_obtener_todos_usuarios(expected_min_count=3)
         self.wait_for_operation()
         
-        self.test_add_friend(user2_id, user3_id)
+        # Paso 3: Probar actualización de usuarios
+        self.print_info("Paso 3: Probando actualización de usuarios...")
+        self.test_actualizar_usuario(
+            usuario1_id,
+            {
+                "username": "usuario_actualizado_1",
+                "email": "actualizado1@test.com",
+                "birth_date": "1990-01-01"
+            }
+        )
         self.wait_for_operation()
         
-        # Paso 3: Verificar amigos
-        self.print_info("Paso 3: Verificando amigos...")
-        self.test_get_user_friends(user1_id, expected_count=2)
-        self.test_get_user_friends(user2_id, expected_count=2)
-        self.test_get_user_friends(user3_id, expected_count=2)
-        
-        # Paso 4: Probar detalles de amigos
-        self.print_info("Paso 4: Probando detalles de amigos...")
-        self.test_get_friend_details(user1_id, user2_id)
-        self.test_get_friend_details(user1_id, user3_id)
-        
-        # Paso 5: Probar eliminación de amigos
-        self.print_info("Paso 5: Probando eliminación de amigos...")
-        self.test_remove_friend(user1_id, user2_id)
+        # Paso 4: Probar relaciones de amistad
+        self.print_info("Paso 4: Probando relaciones de amistad...")
+        self.test_agregar_amigo(usuario1_id, usuario2_id)
         self.wait_for_operation()
         
-        self.test_get_user_friends(user1_id, expected_count=1)
-        
-        # Paso 6: Probar actualización de usuarios
-        self.print_info("Paso 6: Probando actualización de usuarios...")
-        self.test_update_user(user1_id, "updated_user_1", "updated1@example.com", "1990-01-01")
+        self.test_agregar_amigo(usuario1_id, usuario3_id)
         self.wait_for_operation()
         
-        # Paso 7: Probar obtención de usuarios
-        self.print_info("Paso 7: Probando obtención de usuarios...")
-        self.test_get_user(user1_id)
-        self.test_get_all_users()
+        self.test_agregar_amigo(usuario2_id, usuario3_id)
+        self.wait_for_operation()
         
-        # Paso 8: Probar casos de error
-        self.print_info("Paso 8: Probando casos de error...")
-        self.test_get_user(9999, expected_success=False)  # Usuario inexistente
-        self.test_add_friend(user1_id, 9999, expected_success=False)  # Amigo inexistente
-        self.test_add_friend(user1_id, user1_id, expected_success=False)  # Auto-amistad
+        # Paso 5: Verificar amigos
+        self.print_info("Paso 5: Verificando amigos...")
+        self.test_obtener_amigos_usuario(usuario1_id, expected_min_count=2)
+        self.wait_for_operation()
         
-        # Paso 9: Limpieza
-        self.print_info("Paso 9: Limpiando usuarios de prueba...")
-        for user_id in self.created_users[:]:  # Copy list to avoid modification during iteration
-            self.test_delete_user(user_id)
+        self.test_obtener_detalles_amigo(usuario1_id, usuario2_id)
+        self.wait_for_operation()
+        
+        # Paso 6: Probar eliminación de amigos
+        self.print_info("Paso 6: Probando eliminación de amigos...")
+        self.test_eliminar_amigo(usuario1_id, usuario2_id)
+        self.wait_for_operation()
+        
+        self.test_obtener_amigos_usuario(usuario1_id, expected_min_count=1)
+        self.wait_for_operation()
+        
+        # Paso 7: Probar casos de error
+        self.print_info("Paso 7: Probando casos de error...")
+        self.test_obtener_usuario_por_id(9999, expected_success=False)
+        self.wait_for_operation()
+        
+        # Probar crear usuario duplicado
+        usuario_data_duplicado = {
+            "username": "usuario_actualizado_1",
+            "email": "duplicado@test.com",
+            "password": "password123",
+            "birth_date": "1990-01-01"
+        }
+        self.test_crear_usuario_duplicado(usuario_data_duplicado)
+        self.wait_for_operation()
+        
+        # Probar agregarse a sí mismo como amigo
+        self.test_agregar_amigo_a_si_mismo(usuario1_id)
+        self.wait_for_operation()
+        
+        # Paso 8: Probar eliminación
+        self.print_info("Paso 8: Probando eliminación de usuarios...")
+        # Eliminar solo uno para demostrar la funcionalidad
+        if self.created_ids['usuarios']:
+            usuario_a_eliminar = self.created_ids['usuarios'][0]
+            self.test_eliminar_usuario(usuario_a_eliminar)
             self.wait_for_operation()
         
         # Resultados finales
         self.print_test_summary()
-    
+
     def run_quick_test(self):
-        """Ejecuta una prueba rápida con usuarios existentes"""
-        self.print_header("INICIANDO PRUEBA RÁPIDA")
+        """Ejecuta una prueba rápida con datos existentes"""
+        self.print_test_header("INICIANDO PRUEBA RÁPIDA DE USUARIOS")
         
-        # Usar usuarios existentes (ajusta estos IDs según tu base de datos)
-        existing_users = [1, 2, 6]  # Cambia por IDs reales de tu BD
+        # Verificar servidor
+        if not self.test_servidor_conectado():
+            return
         
-        for user_id in existing_users:
-            self.test_get_user(user_id)
-            self.wait_for_operation(0.5)
+        # Probar endpoints básicos con datos existentes
+        self.test_obtener_todos_usuarios()
+        self.wait_for_operation()
+        
+        # Si hay usuarios, probar obtener uno específico
+        usuarios = self.test_obtener_todos_usuarios()
+        if usuarios and len(usuarios) > 0:
+            primer_usuario_id = usuarios[0]['user_id']
+            self.test_obtener_usuario_por_id(primer_usuario_id)
+            self.wait_for_operation()
             
-            self.test_get_user_friends(user_id)
-            self.wait_for_operation(0.5)
+            # Probar obtener amigos si el usuario existe
+            self.test_obtener_amigos_usuario(primer_usuario_id)
+            self.wait_for_operation()
         
-        self.test_get_all_users()
         self.print_test_summary()
-    
+
     def print_test_summary(self):
         """Imprime un resumen de los resultados de las pruebas"""
-        self.print_header("RESUMEN DE PRUEBAS")
+        self.print_test_header("RESUMEN DE PRUEBAS DE USUARIOS")
         print(f"✅ Pruebas exitosas: {self.test_results['passed']}")
         print(f"❌ Pruebas fallidas: {self.test_results['failed']}")
-        print(f"📊 Total de pruebas: {self.test_results['passed'] + self.test_results['failed']}")
+        print(f"📊 Total de pruebas: {self.total_tests}")
         
         if self.test_results['errors']:
             print(f"\n🔍 Errores encontrados:")
             for error in self.test_results['errors']:
                 print(f"   - {error}")
         
-        success_rate = (self.test_results['passed'] / (self.test_results['passed'] + self.test_results['failed'])) * 100
-        print(f"\n🎯 Tasa de éxito: {success_rate:.1f}%")
+        success_pct = self.get_success_percentage()
+        print(f"\n🎯 Tasa de éxito: {success_pct:.1f}%")
+        
+        if self.test_results['failed'] == 0 and self.test_results['passed'] > 0:
+            print("\n🎉 ¡TODAS LAS PRUEBAS DE USUARIOS EXITOSAS!")
+        elif self.test_results['passed'] > 0:
+            print("\n⚠️  Algunas pruebas fallaron, pero otras fueron exitosas")
+        else:
+            print("\n💥 Todas las pruebas fallaron")
 
-# --- Ejemplos de uso ---
+# --- Ejecución de pruebas ---
 if __name__ == "__main__":
     tester = UsuarioTester()
     
-    # Ejecutar prueba comprehensiva (crea y elimina usuarios de prueba)
+    print("Iniciando pruebas de API de Usuarios...")
+    print("Asegúrate de que el servidor Flask esté ejecutándose en http://localhost:8000")
+    time.sleep(2)
+    
+    # Ejecutar prueba comprehensiva (crea y elimina datos de prueba)
     tester.run_comprehensive_test()
     
-    # Ejecutar prueba rápida (usa usuarios existentes)
+    # O ejecutar prueba rápida (usa datos existentes)
     # tester.run_quick_test()
     
-    # O ejecutar pruebas individuales
-    # tester.test_create_user("usuario_individual", "individual@test.com", "password123", "1995-05-05")
-    # tester.test_get_all_users()
-    # tester.test_add_friend(1, 2)  # Ajusta los IDs según tu BD
-    # tester.test_get_user_friends(1)
+    # Limpieza final
+    tester.cleanup()

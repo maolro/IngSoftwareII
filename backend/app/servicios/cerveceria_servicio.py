@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct
 from app.objetos.cerveceria import Cerveceria
-from app.objetos.me_gusta_cerveceria import MeGustaCerveceria
 import math
 
 class CerveceriaService:
@@ -38,31 +37,6 @@ class CerveceriaService:
     @staticmethod
     def get_cerveceria_por_id(db: Session, cerveceria_id: int) -> Cerveceria | None:
         return db.query(Cerveceria).filter(Cerveceria.id == cerveceria_id).first()
-
-    @staticmethod
-    def get_me_gusta_total(db: Session, cerveceria_id: int) -> int:
-        total = db.query(func.count(MeGustaCerveceria.id))\
-                  .filter(MeGustaCerveceria.cerveceria_id == cerveceria_id)\
-                  .scalar()
-        return total if total else 0
-
-    @staticmethod
-    def marcar_me_gusta(db: Session, cerveceria_id: int, usuario_id: int) -> dict:
-        existe = db.query(MeGustaCerveceria).filter_by(
-            cerveceria_id=cerveceria_id, usuario_id=usuario_id
-        ).first()
-        if existe:
-            raise ValueError("Ya has marcado esta cervecería con 'Me gusta'")
-
-        me_gusta = MeGustaCerveceria(cerveceria_id=cerveceria_id, usuario_id=usuario_id)
-        db.add(me_gusta)
-        db.commit()
-
-        return {
-            "cerveceria_id": cerveceria_id,
-            "usuario_id": usuario_id,
-            "mensaje": "Has marcado esta cervecería con 'Me gusta'."
-        }
 
     @staticmethod
     def get_cervecerias_cercanas(db: Session, lat: float, lon: float, radio: float = 5) -> list[Cerveceria]:

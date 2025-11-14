@@ -22,7 +22,7 @@ def api_crear_cerveceria():
     except ValueError as e:
         return jsonify({"error": str(e)}), 409
     except Exception as e:
-        abort(500, description=str(e))
+        return jsonify({"error": f"{e}"}), 500
 
 
 @cerveceria_bp.route("/cervecerias/", methods=["GET"])
@@ -41,7 +41,7 @@ def api_buscar_cervecerias():
         return jsonify(resultado), 200
     
     except Exception as e:
-        abort(500, description=str(e))
+        return jsonify({"error": f"{e}"}), 500
 
 
 @cerveceria_bp.route("/cervecerias/<int:id_cerveceria>/", methods=["GET"])
@@ -53,34 +53,13 @@ def api_get_detalle_cerveceria(id_cerveceria: int):
     try:
         cerveceria = CerveceriaService.get_cerveceria_por_id(g.db, id_cerveceria)
         if not cerveceria:
-            abort(404, "Cervecería no encontrada.")
-        
+            return jsonify({"error": "Cerveceria no encontrada"}), 404
+                
         cerveceria_dict = cerveceria.to_dict()
-        cerveceria_dict['me_gusta_total'] = CerveceriaService.get_me_gusta_total(g.db, id_cerveceria)
         return jsonify(cerveceria_dict), 200
     
     except Exception as e:
-        abort(500, description=str(e))
-
-
-@cerveceria_bp.route("/cervecerias/<int:id_cerveceria>/me-gusta/", methods=["POST"])
-def api_marcar_me_gusta(id_cerveceria: int):
-    """
-    Endpoint para RF-3.7 (marcar un local con 'me gusta').
-    """
-    data = request.json
-    if not data or 'usuario_id' not in data:
-        abort(400, "El campo 'usuario_id' es obligatorio.")
-    
-    try:
-        resultado = CerveceriaService.marcar_me_gusta(g.db, id_cerveceria, data['usuario_id'])
-        return jsonify(resultado), 201
-    
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 409
-    except Exception as e:
-        abort(500, description=str(e))
-
+        return jsonify({"error": f"{e}"}), 500
 
 @cerveceria_bp.route("/cervecerias/sugeridas/", methods=["GET"])
 def api_sugerencias_cervecerias():
@@ -100,4 +79,4 @@ def api_sugerencias_cervecerias():
         return jsonify([c.to_dict() for c in sugerencias]), 200
     
     except Exception as e:
-        abort(500, description=str(e))
+        return jsonify({"error": f"{e}"}), 500

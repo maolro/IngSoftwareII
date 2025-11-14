@@ -1,9 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct
-
 from app.objetos.cerveza import Cerveza
-
-
+from app.objetos.degustacion import DegustacionDB
 
 class CervezaService:
 
@@ -40,12 +38,12 @@ class CervezaService:
         # El query ahora pide la Cerveza y el promedio de Degustacion.rating
         query = db.query(
             Cerveza,
-            func.avg(Degustacion.rating).label("valoracion_promedio")
+            func.avg(DegustacionDB.rating).label("valoracion_promedio")
         )
         
         # Usamos un LEFT JOIN (isouter=True)
         # Si una cerveza no tiene degustaciones, el join no la descarta.
-        query = query.join(Degustacion, Degustacion.cerveza_id == Cerveza.id, isouter=True)
+        query = query.join(DegustacionDB, DegustacionDB.cerveza_id == Cerveza.id, isouter=True)
         
         if q:
             query = query.filter(Cerveza.nombre.ilike(f"%{q}%"))
