@@ -17,25 +17,9 @@ services:
     networks:
       - my_network
 
-  backend:
-    build: .  # Construye la imagen usando el Dockerfile en este directorio
-    container_name: beersp-api
-    ports:
-      - "8000:8000" 
-    volumes:
-      - ./app:/app/app 
-    environment:
-      # Pasa la URL de la BDD al contenedor
-      - DATABASE_URL=mysql+pymysql://maolro:beersp_db@mysql:3306/beersp_db
-    networks:
-      - my_network
-    depends_on:
-      - mysql #
-
 volumes:
   mysql_data:
-  app:
-
+  
 networks:
   my_network:
     driver: bridge

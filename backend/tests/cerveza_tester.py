@@ -108,6 +108,6 @@ def run_tests():
 
 if __name__ == "__main__":
     print("Iniciando pruebas de API en 2 segundos...")
-    print("Asegúrate de que 'app.py' esté ejecutándose en otra terminal.")
+    print("Asegúrate de que 'main.py' esté ejecutándose en otra terminal.")
     time.sleep(2)
     run_tests()

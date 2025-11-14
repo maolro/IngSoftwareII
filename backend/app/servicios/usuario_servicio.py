@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from uuid import uuid4
 from sqlalchemy import Connection, MetaData, Table, create_engine, select, text, except_
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
@@ -62,22 +62,28 @@ class UsuarioServicio:
         """
         return db.query(UsuarioDB).all()
 
-    def create_usuario(self, db: Session, usuario: UsuarioCreate) -> UsuarioDB:
+    def create_usuario(self, db: Session, usuario: dict) -> UsuarioDB:
         """
         (POST) Crea un nuevo usuario en la base de datos.
         Hashea la contraseña antes de guardarla.
         """
+        # Filtramos la entrada para incluir solo columnas del modelo
+        atributos_modelo = UsuarioDB.__table__.columns.keys()
+        data_limpia = {k: v for k, v in usuario.items() if k in atributos_modelo}  
+        
         # Hasheamos la contraseña
-        hashed_password = self.get_password_hash(usuario.password)
+        if 'password' in usuario:
+            data_limpia["password_hash"] = self.get_password_hash(usuario['password'])  
         
-        # Creamos el objeto UsuarioDB (SQLAlchemy)
-        db_user = UsuarioDB(
-            username=usuario.username,
-            email=usuario.email,
-            password_hash=hashed_password,
-            birth_date=usuario.birth_date,
-        )
-        
+        # Convertimos adecuadamente la fecha si es un string
+        if 'birth_date' in data_limpia and isinstance(data_limpia['birth_date'], str):
+            try:
+                data_limpia['birth_date'] = datetime.strptime(data_limpia['birth_date'], '%Y-%m-%d').date()
+            except ValueError as e:
+                raise ValueError(f"Formato invalido para la fecha. Usa YYYY-MM-DD: {e}")
+            
+        # Añadimos al usuario
+        db_user = UsuarioDB(**data_limpia)
         db.add(db_user)
         try:
             db.commit()
@@ -88,7 +94,7 @@ class UsuarioServicio:
             # Relanzamos la excepción para que el controlador la maneje
             raise e
 
-    def update_usuario(self, db: Session, user_id: int, usuario: Usuario) -> Optional[UsuarioDB]:
+    def update_usuario(self, db: Session, user_id: int, usuario: dict) -> Optional[UsuarioDB]:
         """
         (PUT) Actualiza un usuario existente.
         """
@@ -96,11 +102,30 @@ class UsuarioServicio:
         if not db_user:
             return None # El controlador devolverá 404
 
-        # Actualizamos los campos basados en el modelo 'Usuario'
-        db_user.username = usuario.username
-        db_user.email = usuario.email
-        db_user.birth_date = usuario.birth_date
-        db_user.friends = usuario.friends
+        # Actualiza los campos basados en el modelo 'Usuario'
+        for key, value in usuario.items():
+            # Solo actualizar si el atributo existe en el modelo
+            if hasattr(db_user, key):
+                # Convertir birth_date de string a date object si es necesario
+                if key == "birth_date" and isinstance(value, str):
+                    try:
+                        value = datetime.strptime(value, '%Y-%m-%d').date()
+                    except ValueError:
+                        raise ValueError(f"Formato de fecha inválido: {value}. Use YYYY-MM-DD")
+                
+                # Validación para username único 
+                if key == "username" and value != db_user.username:
+                    existing_user = self.get_usuario_by_username(db, value)
+                    if existing_user:
+                        raise ValueError("No puedes cambiar el username al de un usuario que ya existe")
+                
+                # Validación para email único
+                if key == "email" and value != db_user.email:
+                    existing_user = self.get_usuario_by_email(db, value)
+                    if existing_user:
+                        raise ValueError("El email ya está registrado por otro usuario")
+                    
+                setattr(db_user, key, value)
         
         db.add(db_user)
         try:

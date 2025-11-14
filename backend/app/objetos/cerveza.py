@@ -1,5 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float
 from app.base_datos import Base
+from sqlalchemy.orm import relationship
+
 #Si vas a usar otro manejador de conexiones, cambiar la importación.
 
 class Cerveza(Base):
@@ -20,6 +22,11 @@ class Cerveza(Base):
     porcentaje_alcohol = Column(Float)
     ibu = Column(Integer) # Amargor (%IBU)
     color = Column(String)
+
+    # Relaciones
+    degustaciones = relationship("DegustacionDB",  back_populates="cerveza",
+        cascade="all, delete-orphan"
+    )
     
     # Nota: 'valoracion_promedio' (RF-3.4) no es una columna
     # sino un valor calculado en el servicio.

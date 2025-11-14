@@ -1,6 +1,5 @@
 Cerveza REQUISITOS Y DATOS
 
-
 RF-3.1 El usuario debe poder buscar una cerveza existente en el sistema antes de registrar
 una nueva degustación.
 
