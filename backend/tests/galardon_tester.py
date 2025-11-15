@@ -22,7 +22,7 @@ class GalardonTester:
     def print_test_header(self, titulo):
         """ Imprime un cabezal bonito para cada prueba """
         print("\n" + "="*50)
-        print(f" 🏆 PRUEBA: {titulo}")
+        print(f" PRUEBA: {titulo}")
         print("="*50)
     
     def print_success(self, message):

@@ -3,22 +3,25 @@ from flask import Blueprint, jsonify, request, abort, g
 from sqlalchemy.orm import Session
 from typing import List
 from app.servicios import degustacion_servicio
+import pdb
 
 # Blueprint para las rutas de degustaciones
 degustacion_bp = Blueprint('degustacion_bp', __name__)
 
 @degustacion_bp.route("/degustaciones/", methods=["POST"])
-def crear_degustacion():
+def api_crear_degustacion():
     """
     Crea una nueva degustación (RF-3.1, RF-3.3, RF-3.5)
     """
     data = request.json
+    # pdb.set_trace()
     if not data:
         abort(400, "No se proporcionaron datos para crear la degustación")
     
     try:
         nueva_degustacion = degustacion_servicio.crear_degustacion(db=g.db, degustacion_data=data)
-        return jsonify(nueva_degustacion.to_dict()), 201
+        dict = nueva_degustacion.to_dict()
+        return jsonify(dict), 201
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:

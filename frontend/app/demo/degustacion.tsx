@@ -40,7 +40,7 @@ export const ReviewForm: React.FC<ReviewFormProps> = ({
                     />
                     {/* A real app would have a star rating component here */}
                     <TextInput
-                        style={[styles.textInput, { height: 40, marginTop: 10 }]}
+                        style={[styles.textInput, { height: 50, marginTop: 10 }]}
                         placeholder="Rating (0-5)"
                         keyboardType="numeric"
                         value={rating > 0 ? String(rating) : ''}

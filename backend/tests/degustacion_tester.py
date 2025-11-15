@@ -26,7 +26,7 @@ class DegustacionTester:
     def print_test_header(self, titulo):
         """Imprime un cabezal bonito para cada prueba"""
         print("\n" + "="*60)
-        print(f" 🍺 PRUEBA: {titulo}")
+        print(f" PRUEBA: {titulo}")
         print("="*60)
     
     def print_success(self, message):

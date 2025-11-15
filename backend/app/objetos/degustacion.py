@@ -39,9 +39,6 @@ class DegustacionDB(Base):
             "comentario": self.comentario,
             "fecha_creacion": self.fecha_creacion.isoformat() if self.fecha_creacion else None,
             "fecha_actualizacion": self.fecha_actualizacion.isoformat() if self.fecha_actualizacion else None,
-            "usuario": self.usuario.to_dict() if self.usuario else None,
-            "cerveza": self.cerveza.to_dict() if self.cerveza else None,
-            "cerveceria": self.cerveceria.to_dict() if self.cerveceria else None
         }
 
 class ComentarioDegustacion(Base):

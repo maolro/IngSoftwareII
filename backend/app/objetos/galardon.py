@@ -47,7 +47,7 @@ class UsuarioGalardon(Base):
     galardon_id = Column(Integer, ForeignKey("galardones.id"), primary_key=True)
     
     nivel_actual = Column(Integer, nullable=False, default=1)
-    progreso_actual = Column(Integer, nullable=0, default=0) # Progreso actual del usuario hacia el siguiente nivel
+    progreso_actual = Column(Integer, nullable=False, default=0) # Progreso actual del usuario hacia el siguiente nivel
     obtenido_en = Column(TIMESTAMP, server_default=func.now())
 
     # Relaciones para acceder a los objetos

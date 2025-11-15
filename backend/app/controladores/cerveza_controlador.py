@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request, abort, g
 from app.servicios.cerveza_servicio import CervezaService
+from app.servicios.usuario_servicio import UsuarioServicio
 
 # Uso blueprint, para meter las APIs en "paquetes" y ser más modular.
 cerveza_bp = Blueprint('cerveza_bp', __name__)
@@ -48,15 +49,13 @@ def api_buscar_cervezas():
         
         # 'cervezas_con_valoracion' es list[tuple(Cerveza, float)]
         for cerveza, valoracion in cervezas_con_valoracion:
-            
-            # ¡YA NO HAY CONSULTA DENTRO DEL BUCLE!
-            # valoracion = CervezaService.get_valoracion_promedio(g.db, cerveza.id) <-- ELIMINADA
-            
+            # Obtiene la valoración promedio
+            valoracion = CervezaService.get_valoracion_promedio(g.db, cerveza.id) 
+            # Convierte a diccionario
             cerveza_dict = cerveza.to_dict()
-            
             # Asignamos la valoración (manejando el caso None si no tiene ratings)
             val_promedio_final = round(valoracion, 2) if valoracion is not None else 0.0
-            
+            # Prepara el resultado
             resultado.append({
                 "id": cerveza_dict['id'],
                 "nombre": cerveza_dict['nombre'],
@@ -108,20 +107,12 @@ def api_get_favoritas(id_usuario: int):
     Endpoint para RF-5.4 (Top 3 favoritas del usuario).
     """
     try:
-
-        #### if not usuario:
-        #     abort(404, "Usuario no encontrado.")
+        # Si el usuario no existe, devuelve error 404
+        if not UsuarioServicio.get_usuario_by_id(id_usuario):
+            return jsonify({"error": "Usuario no encontrado"}), 404
         
-        # Si no tiene servicio de usuario, al menos compruebe que devuelve favoritas:
         favoritas = CervezaService.get_favoritas_usuario(g.db, id_usuario)
-        
-        # Si el usuario no existe O no tiene favoritas, la lista estará vacía.
-        # Un 404 solo es necesario si el *usuario* no existe.
         # Si el usuario existe pero no tiene favoritas, devolver [] (lista vacía) 
-        # con código 200 es correcto.
-        
-        #### (Añada la lógica de comprobación de usuario 404 si la necesita)
-        
         return jsonify(favoritas), 200
     except Exception as e:
         abort(500, description=str(e))

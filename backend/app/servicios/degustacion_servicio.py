@@ -45,17 +45,6 @@ def crear_degustacion(db: Session, degustacion_data: dict) -> DegustacionDB:
     # Actualizar la valoración promedio de la cerveza (RF-3.4)
     actualizar_valoracion_promedio_cerveza(db, degustacion_data['cerveza_id'])
     
-    # Verificar y otorgar galardones relacionados con degustaciones (RF-4.1, RF-4.2, RF-4.3)
-    try:
-        galardon_servicio.verificar_y_otorgar_galardones_por_degustacion(
-            db=db, 
-            usuario_id=degustacion_data['usuario_id'], 
-            degustacion_nueva=db_degustacion
-        )
-    except Exception as e:
-        # No fallar la creación si hay error en galardones, solo loggear
-        print(f"Error verificando galardones: {e}")
-    
     return db_degustacion
 
 def obtener_degustacion(db: Session, degustacion_id: int) -> Optional[DegustacionDB]:
