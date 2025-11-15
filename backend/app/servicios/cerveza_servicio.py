@@ -1,3 +1,4 @@
+from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct
 from app.objetos.cerveza import Cerveza
@@ -61,6 +62,39 @@ class CervezaService:
     def get_cerveza_por_id(db: Session, cerveza_id: int) -> Cerveza | None:
         """ Obtiene una cerveza por su ID. """
         return db.query(Cerveza).filter(Cerveza.id == cerveza_id).first()
+    
+    @staticmethod
+    def actualizar_cerveza(db: Session, cerveza_id: int, 
+        cerveza_data: dict) -> Optional[Cerveza]:
+        """
+        Actualiza una cerveza existente
+        """
+        db_cerveza = CervezaService.get_cerveza_por_id(db, cerveza_id)
+        if not db_cerveza:
+            return None
+        # Actualizar campos
+        for key, value in cerveza_data.items():
+            if hasattr(db_cerveza, key):
+                setattr(db_cerveza, key, value)
+        # Actualiza en base de datos
+        db.add(db_cerveza)
+        db.commit()
+        db.refresh(db_cerveza)
+        return db_cerveza
+
+    @staticmethod
+    def eliminar_cerveza(db: Session, cerveza_id: int) -> bool:
+        """
+        Elimina una cerveza
+        """
+        db_cerveza = CervezaService.get_cerveza_por_id(db, cerveza_id)
+        if not db_cerveza:
+            return None
+        if db_cerveza:
+            db.delete(db_cerveza)
+            db.commit()
+            return True
+        return False
 
     @staticmethod
     def get_valoracion_promedio(db: Session, cerveza_id: int) -> float:

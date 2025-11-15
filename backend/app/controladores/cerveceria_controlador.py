@@ -23,6 +23,19 @@ def api_crear_cerveceria():
         return jsonify({"error": str(e)}), 409
     except Exception as e:
         return jsonify({"error": f"{e}"}), 500
+    
+@cerveceria_bp.route("/cervecerias/<int:cerveceria_id>/", methods=["DELETE"])
+def eliminar_cerveza(cerveceria_id: int):
+    """
+    Elimina una cerveza por su ID
+    """
+    try:
+        eliminado = CerveceriaService.eliminar_cerveceria(db=g.db, cerveceria_id=cerveceria_id)
+        if not eliminado:
+            return jsonify({"error": "Cerveceria no encontrada"}), 404
+        return jsonify({"message": "Cerveceria eliminada exitosamente"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @cerveceria_bp.route("/cervecerias/", methods=["GET"])

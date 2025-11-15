@@ -65,18 +65,7 @@ def get_all_users():
     try:
         # Llama la función que obtiene todos los usuarios
         usersDB = usuario_service.get_all_usuarios(db=g.db)
-        
-        usuarios_response = []
-        for db_user in usersDB:
-            usuarios_response.append({
-                "user_id": db_user.id, 
-                "username": db_user.username,
-                "email": db_user.email,
-                "birth_date": db_user.birth_date.isoformat() if db_user.birth_date else None,
-                "password": "",
-                "friends": [friend.id for friend in db_user.friends] if hasattr(db_user, 'friends') else []
-            })
-            
+        usuarios_response = [usuario.to_dict() for usuario in usersDB]    
         return jsonify(usuarios_response), 200
         
     except Exception as e:

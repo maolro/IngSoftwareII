@@ -1,3 +1,4 @@
+from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct
 from app.objetos.cerveceria import Cerveceria
@@ -37,6 +38,39 @@ class CerveceriaService:
     @staticmethod
     def get_cerveceria_por_id(db: Session, cerveceria_id: int) -> Cerveceria | None:
         return db.query(Cerveceria).filter(Cerveceria.id == cerveceria_id).first()
+    
+    @staticmethod
+    def actualizar_cerveceria(db: Session, cerveceria_id: int, 
+        cerveza_data: dict) -> Optional[Cerveceria]:
+        """
+        Actualiza una cerveceria existente
+        """
+        db_cerveceria = CerveceriaService.get_cerveceria_por_id(db, cerveceria_id)
+        if not db_cerveceria:
+            return None
+        # Actualizar campos
+        for key, value in cerveza_data.items():
+            if hasattr(db_cerveceria, key):
+                setattr(db_cerveceria, key, value)
+        # Actualiza en base de datos
+        db.add(db_cerveceria)
+        db.commit()
+        db.refresh(db_cerveceria)
+        return db_cerveceria
+
+    @staticmethod
+    def eliminar_cerveceria(db: Session, cerveceria_id: int) -> bool:
+        """
+        Elimina una cervecería
+        """
+        db_cerveceria = CerveceriaService.get_cerveceria_por_id(db, cerveceria_id)
+        if not db_cerveceria:
+            return None
+        if db_cerveceria:
+            db.delete(db_cerveceria)
+            db.commit()
+            return True
+        return False
 
     @staticmethod
     def get_cervecerias_cercanas(db: Session, lat: float, lon: float, radio: float = 5) -> list[Cerveceria]:

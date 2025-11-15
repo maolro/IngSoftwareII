@@ -82,12 +82,25 @@ def api_get_detalle_cerveza(id_cerveza: int):
             abort(404, "Cerveza no encontrada.") # Usamos 404
             
         cerveza_dict = cerveza.to_dict()
-        cerveza_dict['valoracion_promedio'] = CervezaService.get_valoracion_promedio(g.db, id_cerveza)
+        # cerveza_dict['valoracion_promedio'] = CervezaService.get_valoracion_promedio(g.db, id_cerveza)
         
         return jsonify(cerveza_dict), 200
         
     except Exception as e:
-        abort(500, description=str(e)) # Añadimos descripción
+        return jsonify({"error": str(e)}), 500
+
+@cerveza_bp.route("/cervezas/<int:cerveza_id>/", methods=["DELETE"])
+def eliminar_cerveza(cerveza_id: int):
+    """
+    Elimina una cerveza por su ID
+    """
+    try:
+        eliminado = CervezaService.eliminar_cerveza(db=g.db, cerveza_id=cerveza_id)
+        if not eliminado:
+            return jsonify({"error": "Cerveza no encontrada"}), 404
+        return jsonify({"message": "Cerveza eliminada exitosamente"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @cerveza_bp.route("/usuarios/<int:id_usuario>/cervezas/favoritas/", methods=["GET"])
 def api_get_favoritas(id_usuario: int):

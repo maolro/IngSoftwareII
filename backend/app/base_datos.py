@@ -3,6 +3,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import StaticPool
 
+# ACCEDER SQLITE: sqlite3 database.db
+
 # --- Configuración de la Base de Datos ---
 
 # Usamos una base de datos SQLite en un archivo.
