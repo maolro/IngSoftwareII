@@ -98,10 +98,15 @@ export default function ProfileScreen({ userId, friends, friendRequests
     if (userId) {
       const userToView = MOCK_ALL_USERS.find(user => user.id === userId) || CURRENT_USER;
       setViewingProfile(userToView);
+      
+      // Cambia el header
+      if (userId !== CURRENT_USER.id) {
+        setHeaderProps({ onBack: () => {} });
+      }
     } else {
       setViewingProfile(currentUser);
     }
-  }, [userId, currentUser]);
+  }, [userId, currentUser, setHeaderProps]);
 
   // Constante para comprobar si estás en tu perfil
   const isMyProfile = viewingProfile.id === currentUser.id;

@@ -106,40 +106,42 @@ export default function App() {
   const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
   const [searchModalVisible, setSearchModalVisible] = useState(false);
   const [friendRequests, setFriendRequests] = useState<{from: string, to: string, status: 'pending' | 'accepted' | 'rejected'}[]>([]);
-  const [friends, setFriends] = useState<string[]>(['user2', 'user3']); //simula amigos
-  // Para visitar perfiles anteriores
-  const [profileHistory, setProfileHistory] = useState<(string | null)[]>([null]);
+  const [friends, setFriends] = useState<string[]>(['user2', 'user3']); // simula amigos
+  
+  // Profile history stack - stores the sequence of viewed profiles
+  const [profileHistory, setProfileHistory] = useState<string[]>([CURRENT_USER_ID]);
 
+  // Update header back button based on current state
   useEffect(() => {
-    // Si estamos en "profile" Y el historial es > 1 (o sea, no en nuestro perfil base)
     if (activePage === 'profile' && profileHistory.length > 1) {
+      // Show back button when viewing someone else's profile
       setHeaderProps({ onBack: handleBack });
-    } else if (activePage === 'breweries' && headerProps.onBack) {
-      // Dejar que BreweriesScreen gestione su propio header
     } else {
-      // En cualquier otra página principal, quitar el botón "back"
+      // Hide back button on home page or when viewing own profile
       setHeaderProps({ onBack: null });
     }
-  }, [activePage, profileHistory, headerProps.onBack]); // Depender del historial
+  }, [activePage, profileHistory]);
 
   const handleViewProfile = (userId: string) => {
+    // Add the new profile to history and set it as current
     setProfileHistory(prev => [...prev, userId]);
     setViewingProfileId(userId);
     setActivePage('profile');
     setSearchModalVisible(false);
   };
 
-  // Reset viewing profile when navigating to own profile
   const handleNavigateToProfile = (page: PageName) => {
     if (page === 'profile') {
-      setViewingProfileId(null); // Reset to show current user's profile
+      // When clicking profile tab, show current user's profile
+      if (profileHistory[profileHistory.length - 1] !== CURRENT_USER_ID) {
+        setProfileHistory(prev => [...prev, CURRENT_USER_ID]);
+      }
+      setViewingProfileId(null);
     }
     setActivePage(page);
   };
 
-  // Gestiona el envío de solicitudes de amistad
   const handleSendFriendRequest = (userId: string) => {
-    // Normalmente usaría API
     setFriendRequests(prev => [...prev, {
       from: CURRENT_USER_ID,
       to: userId,
@@ -148,10 +150,38 @@ export default function App() {
     console.log(`Friend request sent to ${userId}`);
   };
 
-  // Gestiona volver atrás al buscar perfiles 
   const handleBack = () => {
-    // Quitar el último perfil del historial para "volver"
-    setProfileHistory(prev => prev.slice(0, -1));
+    if (profileHistory.length > 1) {
+      // Remove current profile from history
+      const newHistory = profileHistory.slice(0, -1);
+      setProfileHistory(newHistory);
+      
+      // Set the previous profile as current
+      const previousProfileId = newHistory[newHistory.length - 1];
+      
+      if (previousProfileId === CURRENT_USER_ID) {
+        // If going back to own profile, set to null
+        setViewingProfileId(null);
+      } else {
+        // If going back to another user's profile
+        setViewingProfileId(previousProfileId);
+      }
+      
+      // Stay on profile page
+      setActivePage('profile');
+    } else {
+      // If no more history, go to home
+      setActivePage('home');
+      setViewingProfileId(null);
+    }
+  };
+
+  // Get current profile ID to display
+  const getCurrentProfileId = () => {
+    if (viewingProfileId) {
+      return viewingProfileId;
+    }
+    return profileHistory[profileHistory.length - 1] === CURRENT_USER_ID ? null : profileHistory[profileHistory.length - 1];
   };
 
   // Función que decide qué pantalla renderizar
@@ -162,9 +192,16 @@ export default function App() {
       case 'breweries':
         return <BreweriesScreen setHeaderProps={setHeaderProps} />;
       case 'profile':
-        return <ProfileScreen userId={viewingProfileId} friends={friends}
-        friendRequests={friendRequests} onSendFriendRequest={handleSendFriendRequest}
-        onViewProfile={handleViewProfile} setHeaderProps={setHeaderProps} />;
+        return (
+          <ProfileScreen 
+            userId={getCurrentProfileId()} 
+            friends={friends}
+            friendRequests={friendRequests} 
+            onSendFriendRequest={handleSendFriendRequest}
+            onViewProfile={handleViewProfile} 
+            setHeaderProps={setHeaderProps} 
+          />
+        );
       case 'notifications':
         return <NotificationsScreen />;
       default:
@@ -172,19 +209,18 @@ export default function App() {
     }
   };
 
-
   return (
     <SafeAreaView style={styles.phoneMockup}>
       <StatusBar barStyle="dark-content" backgroundColor={theme.bgWhite} />
       
-      {/* Cabecera de la app */}
+      {/* App Header */}
       <AppHeader 
         headerProps={headerProps} 
         onNavigate={handleNavigateToProfile} 
         onOpenSearch={() => setSearchModalVisible(true)}
       />
 
-      {/* Main Content (Scrollable) */}
+      {/* Main Content */}
       <ScrollView style={styles.appMain}>
         {renderPage()}
       </ScrollView>
@@ -202,8 +238,7 @@ export default function App() {
   );
 }
 
-
-// --- Estilos de App.tsx (solo los necesarios para el layout) ---
+// --- Estilos de App.tsx ---
 const styles = StyleSheet.create({
   phoneMockup: {
     flex: 1,
@@ -217,7 +252,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: theme.border,
-    backgroundColor: '#cfd60bff', // Tu color de header original
+    backgroundColor: '#cfd60bff',
   },
   logo: {
     width: 100,
