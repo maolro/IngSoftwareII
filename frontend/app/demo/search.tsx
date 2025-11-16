@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // --- MODIFICADO ---
 import {
   StyleSheet,
   Text,
@@ -8,40 +8,56 @@ import {
   TextInput,
   Modal,
   FlatList,
+  ActivityIndicator, 
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { theme } from './components';
+import api, { User } from './api';
 
-// Define UserData interface here since it's not imported from './objects'
-interface UserData {
-  id: string;
-  name: string;
-  username: string;
-  avatar?: string;
-}
-
-const MOCK_ALL_USERS: UserData[] = [
-  { id: 'user1', name: 'Usuario Demo', username: '@usuariodemo', avatar: 'https://placehold.co/100x100/e2e8f0/64748b?text=UD' },
-  { id: 'user2', name: 'Ana López', username: '@analopez', avatar: 'https://placehold.co/100x100/6ee7b7/064e3b?text=AL' },
-  { id: 'user3', name: 'Bruno Reyes', username: '@bruno', avatar: 'https://placehold.co/100x100/c4b5fd/4338ca?text=BR' },
-  { id: 'user4', name: 'Carlo Emilion', username: '@carlo.e', avatar: 'https://placehold.co/100x100/fca5a5/991b1b?text=CE' },
-  { id: 'user5', name: 'Daniela Silva', username: '@daniela.s', avatar: 'https://placehold.co/100x100/fcd34d/92400e?text=DS' },
-];
-
-const CURRENT_USER_ID = 'user1';
+const CURRENT_USER_ID = 1;
 
 interface SearchModalProps {
   visible: boolean;
   onClose: () => void;
-  onSendFriendRequest: (userId: string) => void;
-  onViewProfile: (userId: string) => void;
-  friendRequests: {from: string, to: string, status: 'pending' | 'accepted' | 'rejected'}[];
-  friends: string[];
+  onSendFriendRequest: (userId: number) => void;
+  onViewProfile: (userId: number) => void;
+  friendRequests: { from: number, to: number, status: 'pending' | 'accepted' | 'rejected' }[];
+  friends: number[];
 }
 
-export const SearchModal: React.FC<SearchModalProps> = ({ visible, onClose,  onViewProfile }) => {
+export const SearchModal: React.FC<SearchModalProps> = ({
+  visible,
+  onClose,
+  onViewProfile
+}) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<UserData[]>([]);
+
+  // Estados para manejar los datos de la API
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Carga todos los usuarios CUANDO el modal se hace visible
+  useEffect(() => {
+    // Solo cargar si el modal está visible y los usuarios no se han cargado
+    if (visible && allUsers.length === 0) {
+      const fetchAllUsers = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+          const users = await api.users.getAll();
+          setAllUsers(users);
+        } catch (err) {
+          setError((err as Error).message);
+          console.error("Error al cargar usuarios:", err);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchAllUsers();
+    }
+  }, [visible]); // Se ejecuta cada vez que 'visible' cambia
 
   // Gestina la búsqueda
   const handleSearch = (query: string) => {
@@ -51,31 +67,31 @@ export const SearchModal: React.FC<SearchModalProps> = ({ visible, onClose,  onV
       return;
     }
 
-    // Filtra los usuarios
-    const filteredUsers = MOCK_ALL_USERS.filter(user => 
-      user.id !== CURRENT_USER_ID && // Excluir al usuario actual
-      (user.name.toLowerCase().includes(query.toLowerCase()) || 
-       user.username.toLowerCase().includes(query.toLowerCase()))
+    // Filtra los usuarios LOCALMENTE
+    const filteredUsers = allUsers.filter(user =>
+      user.user_id !== CURRENT_USER_ID && // Excluir al usuario actual
+      (user.username.toLowerCase().includes(query.toLowerCase()) ||
+        (user.email && user.email.toLowerCase().includes(query.toLowerCase()))) // Tu API User tiene username y email
     );
     setSearchResults(filteredUsers);
   };
 
-  // Renderiza la barra de búsqueda
-  const renderUserItem = ({ item }: { item: UserData }) => (
+  // Renderiza el item de usuario 
+  const renderUserItem = ({ item }: { item: User }) => (
     <View style={styles.userItem}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.userInfo}
         onPress={() => {
-          onViewProfile(item.id);
+          onViewProfile(item.user_id); 
         }}
       >
-        <Image 
-          source={{ uri: item.avatar || 'https://placehold.co/100x100/e2e8f0/64748b?text=U' }} 
+        <Image
+          source={{ uri: item.avatar || 'https://placehold.co/100x100/e2e8f0/64748b?text=U' }}
           style={styles.userAvatar}
         />
         <View style={styles.userDetails}>
-          <Text style={styles.userName}>{item.name}</Text>
-          <Text style={styles.userUsername}>{item.username}</Text>
+          <Text style={styles.userName}>{item.username}</Text>
+          <Text style={styles.userUsername}>{item.email}</Text>
         </View>
       </TouchableOpacity>
     </View>
@@ -96,12 +112,12 @@ export const SearchModal: React.FC<SearchModalProps> = ({ visible, onClose,  onV
           </TouchableOpacity>
         </View>
 
-        {/* Barra de Búsqueda */}
+        {/* Barra de Búsqueda  */}
         <View style={styles.searchContainer}>
           <Icon name="search" size={20} color={theme.textLight} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Buscar por nombre o username..."
+            placeholder="Buscar por nombre de usuario o email..." 
             value={searchQuery}
             onChangeText={handleSearch}
             autoFocus={true}
@@ -112,14 +128,25 @@ export const SearchModal: React.FC<SearchModalProps> = ({ visible, onClose,  onV
         <FlatList
           data={searchResults}
           renderItem={renderUserItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.username.toString()}
           style={styles.resultsList}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Icon name="search-off" size={48} color={theme.border} />
-              <Text style={styles.emptyStateText}>
-                {searchQuery ? 'No se encontraron usuarios' : 'Busca usuarios para agregar como amigos'}
-              </Text>
+              {isLoading ? (
+                <ActivityIndicator size="large" color={theme.primary} />
+              ) : error ? (
+                <>
+                  <Icon name="error-outline" size={48} color={theme.red} />
+                  <Text style={styles.emptyStateText}>Error al cargar: {error}</Text>
+                </>
+              ) : (
+                <>
+                  <Icon name="search-off" size={48} color={theme.border} />
+                  <Text style={styles.emptyStateText}>
+                    {searchQuery ? 'No se encontraron usuarios' : 'Busca usuarios para agregar'}
+                  </Text>
+                </>
+              )}
             </View>
           }
         />
@@ -128,6 +155,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ visible, onClose,  onV
   );
 };
 
+// --- Estilos (sin cambios) ---
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
@@ -205,27 +233,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.textLight,
   },
-  addButton: {
-    backgroundColor: theme.primary,
-    padding: 8,
-    borderRadius: 20,
-  },
-  pendingButton: {
-    backgroundColor: theme.textLight,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-  },
-  pendingText: {
-    color: theme.bgWhite,
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  friendButton: {
-    backgroundColor: theme.blue,
-    padding: 8,
-    borderRadius: 20,
-  },
+  // ... (los demás estilos que no se usan) ...
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',

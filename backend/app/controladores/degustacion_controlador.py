@@ -3,6 +3,8 @@ from flask import Blueprint, jsonify, request, abort, g
 from sqlalchemy.orm import Session
 from typing import List
 from app.servicios import degustacion_servicio
+from app.servicios.usuario_servicio import UsuarioServicio
+from app.servicios.cerveza_servicio import CervezaService
 import pdb
 
 # Blueprint para las rutas de degustaciones
@@ -50,8 +52,22 @@ def obtener_degustaciones():
             degustaciones = degustacion_servicio.obtener_todas_degustaciones(
                 db=g.db, skip=skip, limit=limit
             )
-        
-        degustaciones_dict = [degustacion.to_dict() for degustacion in degustaciones]
+        degustaciones_dict = []
+        for degustacion in degustaciones:
+            deg_final = degustacion.to_dict()
+            # Comprueba si existe el usuario y añade su nombre
+            usuario = UsuarioServicio.get_usuario_by_id(db=g.db, user_id=degustacion.usuario_id)
+            if not usuario:
+                return jsonify({"error": "El id del usuario proporcionado no existe"}), 404
+            # Comprueba si existe la cerveza y añade su nombre
+            cerveza = CervezaService.get_cerveza_por_id(db=g.db, cerveza_id=degustacion.cerveza_id)
+            if not cerveza:
+                return jsonify({"error": "El id de la cerveza proporcionada no existe"}), 404
+            # Añade el nombre de usuario y de la cerveza para mayor simplicidad
+            deg_final["nombre_usuario"] = usuario.username
+            deg_final["nombre_cerveza"] = cerveza.nombre
+            degustaciones_dict.append(deg_final)
+        # Devuelve el array de degustaciones
         return jsonify(degustaciones_dict), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

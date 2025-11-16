@@ -646,7 +646,7 @@ if __name__ == "__main__":
     
     # Poblar la base de datos
     seeder.limpiar_todo_por_api()
-    # seeder.poblar_base_datos()
+    seeder.poblar_base_datos()
  
     # Para limpiar todo, descomenta las siguientes líneas:
     # print("\n" + "="*70)

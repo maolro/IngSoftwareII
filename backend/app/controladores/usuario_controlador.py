@@ -94,6 +94,7 @@ def get_user_by_id(user_id: int):
             "email": db_user.email,
             "birth_date": db_user.birth_date.isoformat() if db_user.birth_date else None,
             "password": "",
+            "created_at": db_user.created_at.isoformat() if db_user.created_at else None,
             "friends": [friend.id for friend in db_user.friends] if hasattr(db_user, 'friends') else []
         }
         
