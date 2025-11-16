@@ -36,7 +36,7 @@ def obtener_degustaciones():
         usuario_id = request.args.get('usuario_id', type=int)
         cerveza_id = request.args.get('cerveza_id', type=int)
         skip = request.args.get('skip', 0, type=int)
-        limit = request.args.get('limit', 50, type=int)
+        limit = request.args.get('limit', 100, type=int)
         
         if usuario_id:
             degustaciones = degustacion_servicio.obtener_degustaciones_por_usuario(
@@ -47,7 +47,9 @@ def obtener_degustaciones():
                 db=g.db, cerveza_id=cerveza_id, skip=skip, limit=limit
             )
         else:
-            return jsonify({"error": "Se debe proporcionar usuario_id o cerveza_id"}), 400
+            degustaciones = degustacion_servicio.obtener_todas_degustaciones(
+                db=g.db, skip=skip, limit=limit
+            )
         
         degustaciones_dict = [degustacion.to_dict() for degustacion in degustaciones]
         return jsonify(degustaciones_dict), 200
@@ -99,7 +101,7 @@ def eliminar_degustacion(degustacion_id: int):
             return jsonify({"error": "Degustación no encontrada"}), 404
         return jsonify({"message": "Degustación eliminada exitosamente"}), 200
     except Exception as e:
-        abort(500, description=str(e))
+        return jsonify({"error": f"{e}"}), 500
 
 @degustacion_bp.route("/degustaciones/mas-valoradas/", methods=["GET"])
 def obtener_degustaciones_mas_valoradas():
@@ -178,3 +180,29 @@ def obtener_comentarios_degustacion(degustacion_id: int):
         return jsonify(comentarios_dict), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@degustacion_bp.route("/comentarios/", methods=["GET"])
+def obtener_todos_comentarios():
+    """
+    Obtiene todos los comentarios
+    """
+    try:
+        comentarios = degustacion_servicio.obtener_todos_comentarios(db=g.db)
+        comentarios_dict = [comentario.to_dict() for comentario in comentarios]
+        return jsonify(comentarios_dict), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@degustacion_bp.route("/comentarios/<int:comentario_id>", 
+    methods=["DELETE"])
+def eliminar_comentario(comentario_id: int):
+    """
+    Elimina un comentario
+    """
+    try:
+        eliminada = degustacion_servicio.eliminar_comentario(db=g.db, comentario_id=comentario_id)
+        if not eliminada:
+            return jsonify({"error": "Comentario no encontrado"}), 404
+        return jsonify({"message": "Comentario eliminado exitosamente"}), 200
+    except Exception as e:
+        return jsonify({"error": f"{e}"}), 500

@@ -9,7 +9,6 @@ from ..servicios.usuario_servicio import UsuarioServicio
 # --- Inicialización ---
 
 usuario_bp = Blueprint('usuario_bp', __name__)
-usuario_service = UsuarioServicio()
 
 # --- HTTP Endpoints ---
 
@@ -34,19 +33,19 @@ def create_new_user():
             }), 400    
     try:
         # Comprueba si el correo ya existe
-        if usuario_service.get_usuario_by_email(g.db, email=data['email']):
+        if UsuarioServicio.get_usuario_by_email(g.db, email=data['email']):
             return jsonify({
                 "error": "El correo electrónico ya está registrado."
             }), 409
         
         # Comprueba si el nombre de usuario ya existe
-        if usuario_service.get_usuario_by_username(g.db, username=data['username']):
+        if UsuarioServicio.get_usuario_by_username(g.db, username=data['username']):
             return jsonify({
                 "error": "El nombre de usuario ya está registrado."
             }), 409
         
         # Llama a la capa de servicios
-        db_user = usuario_service.create_usuario(g.db, data)
+        db_user = UsuarioServicio.create_usuario(g.db, data)
 
         return jsonify(db_user.to_dict()), 201
         
@@ -64,7 +63,7 @@ def get_all_users():
     """
     try:
         # Llama la función que obtiene todos los usuarios
-        usersDB = usuario_service.get_all_usuarios(db=g.db)
+        usersDB = UsuarioServicio.get_all_usuarios(db=g.db)
         usuarios_response = [usuario.to_dict() for usuario in usersDB]    
         return jsonify(usuarios_response), 200
         
@@ -82,7 +81,7 @@ def get_user_by_id(user_id: int):
     """
     try:
         # Llama la función que trabaja sobre la base de datos
-        db_user = usuario_service.get_usuario_by_id(db=g.db, user_id=user_id)
+        db_user = UsuarioServicio.get_usuario_by_id(db=g.db, user_id=user_id)
         
         if db_user is None:
             return jsonify({
@@ -119,7 +118,7 @@ def update_user_by_id(user_id: int):
         }), 400
     
     try:
-        db_user = usuario_service.update_usuario(db=g.db, user_id=user_id, usuario=data)
+        db_user = UsuarioServicio.update_usuario(db=g.db, user_id=user_id, usuario=data)
     
         if db_user is None:
             return jsonify({
@@ -150,7 +149,7 @@ def delete_user_by_id(user_id: int):
     Eliminar usuario por ID
     """
     try:
-        success = usuario_service.delete_usuario(g.db, user_id)
+        success = UsuarioServicio.delete_usuario(g.db, user_id)
         
         if not success:
             return jsonify({
@@ -189,7 +188,7 @@ def add_friend(user_id: int):
                 "error": "No puedes agregarte a ti mismo como amigo."
             }), 400
         
-        success = usuario_service.crear_amistad(g.db, user_id, friend_id)
+        success = UsuarioServicio.crear_amistad(g.db, user_id, friend_id)
         
         if success:    
             return jsonify({
@@ -214,7 +213,7 @@ def get_user_friends(user_id: int):
     Obtiene todos los amigos de un usuario
     """
     try:
-        friends = usuario_service.obtener_amigos(g.db, user_id)
+        friends = UsuarioServicio.obtener_amigos(g.db, user_id)
         
         # Convierte a formato de respuesta
         friend_responses = []
@@ -243,14 +242,14 @@ def get_friend_info(user_id: int, friend_id: int):
     Verificar si existe amistad entre usuarios
     """
     try:
-        db_user = usuario_service.get_usuario_by_id(db=g.db, user_id=user_id)
+        db_user = UsuarioServicio.get_usuario_by_id(db=g.db, user_id=user_id)
         # Comprueba si el usuario existe
         if db_user is None:
             return jsonify({
                 "error": f"Usuario con ID {user_id} no encontrado."
             }), 404
 
-        db_friend = usuario_service.get_usuario_by_id(db=g.db, user_id=friend_id)
+        db_friend = UsuarioServicio.get_usuario_by_id(db=g.db, user_id=friend_id)
         # Comprueba si el amigo existe
         if db_friend is None:
             return jsonify({
@@ -282,7 +281,7 @@ def remove_friend(user_id: int, friend_id: int):
     Eliminar un amigo de la lista de amigos de un usuario.
     """
     try:
-        success = usuario_service.eliminar_amistad(g.db, user_id, friend_id)
+        success = UsuarioServicio.eliminar_amistad(g.db, user_id, friend_id)
         
         if success:
             return jsonify({

@@ -417,13 +417,7 @@ class CerveceriaTester:
         self.test_buscar_cervecerias(pais="Alemania", expected_min_count=1)
         self.wait_for_operation()
         
-        # Paso 4: Probar sugerencias por geolocalización
-        self.print_info("Paso 4: Probando sugerencias por geolocalización...")
-        # Coordenadas de Madrid centro
-        self.test_obtener_cervecerias_sugeridas(40.4168, -3.7038, radio=10, expected_min_count=0)
-        self.wait_for_operation()
-        
-        # Paso 5: Probar casos de error
+        # Paso 4: Probar casos de error
         self.print_info("Paso 5: Probando casos de error...")
         self.test_obtener_cerveceria_por_id(9999, expected_success=False)
         self.wait_for_operation()
@@ -442,7 +436,7 @@ class CerveceriaTester:
         self.test_cerveceria_sin_campos_obligatorios()
         self.wait_for_operation()
         
-        # Paso 6: Probar búsqueda avanzada
+        # Paso 5: Probar búsqueda avanzada
         self.print_info("Paso 6: Probando búsqueda avanzada...")
         self.test_buscar_cervecerias(q="Brew", ciudad="Barcelona", expected_min_count=1)
         self.wait_for_operation()

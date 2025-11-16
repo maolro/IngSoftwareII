@@ -294,14 +294,14 @@ class CervezaTester:
                 self.print_success(f"Obtenidas {len(favoritas)} cervezas favoritas")
                 # Mostrar detalles de las favoritas
                 for i, fav in enumerate(favoritas, 1):
-                    print(f"   🍺 #{i}: {fav['nombre']} - Valoración: {fav.get('valoracion_usuario', 'N/A')}")
+                    print(f" #{i}: {fav['nombre']} - Valoración: {fav.get('valoracion_usuario', 'N/A')}")
                 return favoritas
             elif not expected_success and resp.status_code == 404:
                 self.print_success("Usuario no encontrado (como se esperaba)")
                 return None
             else:
                 error_msg = resp.json().get('error', 'Error desconocido')
-                self.print_error(f"Resultado inesperado. {resp.status_code} - {error_msg}")
+                self.print_error(f"Resultado inesperado. {error_msg}")
                 return None
                 
         except Exception as e:

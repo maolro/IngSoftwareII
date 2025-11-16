@@ -1,8 +1,9 @@
 from typing import Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import func, distinct
+from sqlalchemy import desc, func, distinct
 from app.objetos.cerveza import Cerveza
 from app.objetos.degustacion import DegustacionDB
+import pdb
 
 class CervezaService:
 
@@ -36,6 +37,8 @@ class CervezaService:
         Busca y filtra cervezas (RF-3.1, RF-5.7).
         AHORA INCLUYE LA VALORACIÓN PROMEDIO EN 1 SOLA CONSULTA.
         """
+        # pdb.set_trace()
+
         # El query ahora pide la Cerveza y el promedio de Degustacion.rating
         query = db.query(
             Cerveza,
@@ -104,6 +107,7 @@ class CervezaService:
         resultado = db.query(func.avg(DegustacionDB.puntuacion))\
             .filter(DegustacionDB.cerveza_id == cerveza_id)\
             .scalar()
+        
         return round(resultado, 2) if resultado is not None else 0.0
 
     @staticmethod
@@ -112,18 +116,21 @@ class CervezaService:
         Obtiene las 3 favoritas de un usuario (RF-5.4).
         """
         favoritas = db.query(
-            Cerveza,
-            func.avg(DegustacionDB.rating).label("valoracion_usuario"))\
-                .join(DegustacionDB, Cerveza.id == DegustacionDB.cerveza_id)\
-                .filter(DegustacionDB.usuario_id == usuario_id)\
-                .group_by(Cerveza.id)\
-                .order_by(func.desc("valoracion_usuario") # Ordena por el alias
-        ).limit(3).all()
+                Cerveza,
+                DegustacionDB.puntuacion,
+            ).join(
+                DegustacionDB, Cerveza.id == DegustacionDB.cerveza_id
+            ).filter(
+                DegustacionDB.usuario_id == usuario_id,
+                DegustacionDB.puntuacion.isnot(None)  # Solo degustaciones con puntuación
+            ).order_by(
+                desc(DegustacionDB.puntuacion),  # Ordenar por puntuación descendente
+            ).limit(3).all()
                 
         # # 'favoritas' es una lista de tuplas: [(Cerveza, 5.0), (Cerveza, 4.5)]
         # # La convertimos al formato diccionario que pedía el placeholder:
-        
-        return [
+        pdb.set_trace()
+        res = [
             {
                 "id": cerveza.id,
                 "nombre": cerveza.nombre,
@@ -132,6 +139,7 @@ class CervezaService:
             }
             for cerveza, valoracion in favoritas # Desempaquetamos la tupla
         ]
+        return res
 
     @staticmethod
     def get_estilos_unicos(db: Session) -> list[str]:

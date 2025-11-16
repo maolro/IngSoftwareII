@@ -192,12 +192,13 @@ class DegustacionTester:
             self.print_error(f"Error creando cervecería: {e}")
             return None
 
-    def test_crear_degustacion(self, usuario_id, cerveza_id, cerveceria_id=None, expected_success=True):
+    def test_crear_degustacion(self, usuario_id, cerveza_id, puntuacion,
+            cerveceria_id=None, expected_success=True):
         """Prueba para crear degustación"""
         degustacion_data = {
             "usuario_id": usuario_id,
             "cerveza_id": cerveza_id,
-            "puntuacion": round(random.uniform(1.0, 5.0), 1),
+            "puntuacion": puntuacion,
             "comentario": f"Esta es una degustación de prueba creada el {time.strftime('%Y-%m-%d %H:%M:%S')}"
         }
         
@@ -279,6 +280,29 @@ class DegustacionTester:
                 degustaciones = resp.json()
                 if len(degustaciones) >= expected_min_count:
                     self.print_success(f"Obtenidas {len(degustaciones)} degustaciones de la cerveza")
+                    return degustaciones
+                else:
+                    self.print_error(f"Se esperaban al menos {expected_min_count} degustaciones, se obtuvieron {len(degustaciones)}")
+                    return degustaciones
+            else:
+                self.print_error(f"Error obteniendo degustaciones. Código: {resp.status_code} - {resp.json()['error']}")
+                return None
+                
+        except Exception as e:
+            self.print_error(f"Error obteniendo degustaciones: {e}")
+            return None
+        
+    def test_obtener_todas_degustaciones(self, expected_min_count=0):
+        """Prueba obtener todas las degustaciones"""
+        self.print_test_header(f"OBTENER TODAS LAS DEGUSTACIONES")
+        
+        try:
+            resp = requests.get(f"{BASE_URL}/degustaciones/")
+            
+            if resp.status_code == 200:
+                degustaciones = resp.json()
+                if len(degustaciones) >= expected_min_count:
+                    self.print_success(f"Obtenidas {len(degustaciones)} degustaciones totales")
                     return degustaciones
                 else:
                     self.print_error(f"Se esperaban al menos {expected_min_count} degustaciones, se obtuvieron {len(degustaciones)}")
@@ -515,13 +539,13 @@ class DegustacionTester:
         # Paso 2: Probar creación de degustaciones
         self.print_info("Paso 2: Probando creación de degustaciones...")
         
-        degustacion1_id = self.test_crear_degustacion(usuario1_id, cerveza1_id, cerveceria1_id)
+        degustacion1_id = self.test_crear_degustacion(usuario1_id, cerveza1_id, 3.5, cerveceria1_id)
         self.wait_for_operation()
         
-        degustacion2_id = self.test_crear_degustacion(usuario1_id, cerveza2_id)
+        degustacion2_id = self.test_crear_degustacion(usuario1_id, cerveza2_id, 5, cerveceria2_id)
         self.wait_for_operation()
         
-        degustacion3_id = self.test_crear_degustacion(usuario2_id, cerveza1_id, cerveceria2_id)
+        degustacion3_id = self.test_crear_degustacion(usuario2_id, cerveza1_id, 4.5, cerveceria2_id)
         self.wait_for_operation()
         
         # Paso 3: Probar casos especiales de degustaciones
@@ -538,11 +562,14 @@ class DegustacionTester:
         
         self.test_obtener_degustacion_por_id(degustacion1_id)
         self.wait_for_operation()
-        
-        self.test_obtener_degustaciones_por_usuario(usuario1_id, expected_min_count=3)
+
+        self.test_obtener_todas_degustaciones(expected_min_count=3)
         self.wait_for_operation()
         
-        self.test_obtener_degustaciones_por_cerveza(cerveza1_id, expected_min_count=2)
+        self.test_obtener_degustaciones_por_usuario(usuario1_id, expected_min_count=2)
+        self.wait_for_operation()
+        
+        self.test_obtener_degustaciones_por_cerveza(cerveza2_id, expected_min_count=1)
         self.wait_for_operation()
         
         # Paso 5: Probar degustaciones más valoradas

@@ -24,7 +24,8 @@ class DegustacionDB(Base):
     usuario = relationship("UsuarioDB", back_populates="degustaciones")
     cerveza = relationship("Cerveza", back_populates="degustaciones")
     cerveceria = relationship("Cerveceria", back_populates="degustaciones")
-    comentarios = relationship("ComentarioDegustacion", back_populates="degustacion")
+    comentarios = relationship("ComentarioDegustacion", back_populates="degustacion",
+        cascade="all, delete-orphan")
 
     def to_dict(self):
         """
