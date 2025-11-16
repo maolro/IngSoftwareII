@@ -71,6 +71,14 @@ if __name__ == "__main__":
     print(f"GET    http://localhost:8000/api/galardones/<id>/")
     print(f"GET    http://localhost:8000/api/usuarios/<id>/galardones")
     print(f"GET    http://localhost:8000/api/usuarios/<id>/galardones/<id>")
+    print("--- CERVECERÍAS ---")
+    print(f"POST   http://localhost:8000/api/cervecerias/")
+    print(f"GET   http://localhost:8000/api/cervecerias/")
+    print(f"GET    http://localhost:8000/api/cervecerias/<id>/")
+    print("--- DEGUSTACIONES ---")
+    print(f"POST   http://localhost:8000/api/degustaciones/")
+    print(f"GET   http://localhost:8000/api/degustaciones/")
+    print(f"GET    http://localhost:8000/api/degustaciones/<id>/")
     print("...")
     
     app.run(host="0.0.0.0", port=8000, debug=True) # Añadido debug=True

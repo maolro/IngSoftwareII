@@ -27,42 +27,49 @@ class UsuarioServicio:
     para interactuar con la base de datos de Usuarios.
     """
 
-    def get_password_hash(self, password: str) -> str:
+    @staticmethod
+    def get_password_hash(password: str) -> str:
         """Hashea una contraseña en texto plano."""
         return pwd_context.hash(password)
 
-    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
+    @staticmethod   
+    def verify_password(plain_password: str, hashed_password: str) -> bool:
         """Verifica una contraseña en texto plano contra un hash."""
         return pwd_context.verify(plain_password, hashed_password)
 
     # --- Funciones CRUD (Llamadas por el controlador) ---
 
-    def get_usuario_by_email(self, db: Session, email: str) -> Optional[UsuarioDB]:
+    @staticmethod
+    def get_usuario_by_email(db: Session, email: str) -> Optional[UsuarioDB]:
         """
         (POST) Busca un usuario por su email.
         Usado por el controlador para verificar duplicados.
         """
         return db.query(UsuarioDB).filter(UsuarioDB.email == email).first()
 
-    def get_usuario_by_username(self, db: Session, username: str) -> Optional[UsuarioDB]:
+    @staticmethod
+    def get_usuario_by_username(db: Session, username: str) -> Optional[UsuarioDB]:
         """
         (GET /username) Busca un usuario por su nombre de usuario.
         """
         return db.query(UsuarioDB).filter(UsuarioDB.username == username).first()
 
-    def get_usuario_by_id(self, db: Session, user_id: int) -> Optional[UsuarioDB]:
+    @staticmethod
+    def get_usuario_by_id(db: Session, user_id: int) -> Optional[UsuarioDB]:
         """
         Busca un usuario por su ID (int).
         """
         return db.query(UsuarioDB).filter(UsuarioDB.id == user_id).first()
 
-    def get_all_usuarios(self, db: Session) -> List[UsuarioDB]:
+    @staticmethod
+    def get_all_usuarios(db: Session) -> List[UsuarioDB]:
         """
         (GET /) Devuelve una lista de todos los usuarios.
         """
         return db.query(UsuarioDB).all()
 
-    def create_usuario(self, db: Session, usuario: dict) -> UsuarioDB:
+    @staticmethod
+    def create_usuario(db: Session, usuario: dict) -> UsuarioDB:
         """
         (POST) Crea un nuevo usuario en la base de datos.
         Hashea la contraseña antes de guardarla.
@@ -73,7 +80,7 @@ class UsuarioServicio:
         
         # Hasheamos la contraseña
         if 'password' in usuario:
-            data_limpia["password_hash"] = self.get_password_hash(usuario['password'])  
+            data_limpia["password_hash"] = UsuarioServicio.get_password_hash(usuario['password'])  
         
         # Convertimos adecuadamente la fecha si es un string
         if 'birth_date' in data_limpia and isinstance(data_limpia['birth_date'], str):
@@ -94,11 +101,12 @@ class UsuarioServicio:
             # Relanzamos la excepción para que el controlador la maneje
             raise e
 
-    def update_usuario(self, db: Session, user_id: int, usuario: dict) -> Optional[UsuarioDB]:
+    @staticmethod
+    def update_usuario(db: Session, user_id: int, usuario: dict) -> Optional[UsuarioDB]:
         """
         (PUT) Actualiza un usuario existente.
         """
-        db_user = self.get_usuario_by_id(db, user_id)
+        db_user = UsuarioServicio.get_usuario_by_id(db, user_id)
         if not db_user:
             return None # El controlador devolverá 404
 
@@ -115,13 +123,13 @@ class UsuarioServicio:
                 
                 # Validación para username único 
                 if key == "username" and value != db_user.username:
-                    existing_user = self.get_usuario_by_username(db, value)
+                    existing_user = UsuarioServicio.get_usuario_by_username(db, value)
                     if existing_user:
                         raise ValueError("No puedes cambiar el username al de un usuario que ya existe")
                 
                 # Validación para email único
                 if key == "email" and value != db_user.email:
-                    existing_user = self.get_usuario_by_email(db, value)
+                    existing_user = UsuarioServicio.get_usuario_by_email(db, value)
                     if existing_user:
                         raise ValueError("El email ya está registrado por otro usuario")
                     
@@ -136,11 +144,12 @@ class UsuarioServicio:
             db.rollback()
             raise e
 
-    def delete_usuario(self, db: Session, user_id: int) -> bool:
+    @staticmethod
+    def delete_usuario(db: Session, user_id: int) -> bool:
         """
         (DELETE) Elimina un usuario por su ID. Devuelve True si tuvo éxito, False si no se encontró.
         """
-        db_user = self.get_usuario_by_id(db, user_id)
+        db_user = UsuarioServicio.get_usuario_by_id(db, user_id)
         
         if not db_user:
             return False # No encontrado
@@ -152,15 +161,16 @@ class UsuarioServicio:
         except exc.SQLAlchemyError as e:
             db.rollback()
             raise e
-        
-    def crear_amistad(self, db: Session, user_id: int, friend_id: int) -> bool:
+
+    @staticmethod      
+    def crear_amistad(db: Session, user_id: int, friend_id: int) -> bool:
         """
         Crea una relación de amistad entre dos usuarios
         """
         try:
             # Comprueba si existen los usuarios
-            user = self.get_usuario_by_id(db, user_id)
-            friend = self.get_usuario_by_id(db, friend_id)
+            user = UsuarioServicio.get_usuario_by_id(db, user_id)
+            friend = UsuarioServicio.get_usuario_by_id(db, friend_id)
             
             if not user or not friend:
                 return False
@@ -178,23 +188,25 @@ class UsuarioServicio:
         except Exception as e:
             db.rollback()
             raise e
-        
-    def obtener_amigos(self, db: Session, user_id: int) -> List[UsuarioDB]:
+
+    @staticmethod       
+    def obtener_amigos(db: Session, user_id: int) -> List[UsuarioDB]:
         """
         Obtiene la lista de amigos de un usuario
         """
-        user = self.get_usuario_by_id(db, user_id)
+        user = UsuarioServicio.get_usuario_by_id(db, user_id)
         if not user:
             return []
         return user.friends
-    
-    def eliminar_amistad(self, db: Session, user_id: int, friend_id: int) -> bool:
+
+    @staticmethod  
+    def eliminar_amistad(db: Session, user_id: int, friend_id: int) -> bool:
         """
         Remove friend relationship
         """
         try:
-            user = self.get_usuario_by_id(db, user_id)
-            friend = self.get_usuario_by_id(db, friend_id)
+            user = UsuarioServicio.get_usuario_by_id(db, user_id)
+            friend = UsuarioServicio.get_usuario_by_id(db, friend_id)
             
             if not user or not friend:
                 return False

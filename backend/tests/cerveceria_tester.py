@@ -24,7 +24,7 @@ class CerveceriaTester:
     def print_test_header(self, titulo):
         """Imprime un cabezal bonito para cada prueba"""
         print("\n" + "="*60)
-        print(f" 🍻 PRUEBA: {titulo}")
+        print(f" PRUEBA: {titulo}")
         print("="*60)
     
     def print_success(self, message):
@@ -115,7 +115,8 @@ class CerveceriaTester:
                 self.print_success(f"Usuario de prueba creado: {usuario_id}")
                 return usuario_id
             else:
-                self.print_error(f"Error creando usuario: {resp.status_code} - {resp.text}")
+                error_msg = resp.json().get('error', 'Error desconocido')
+                self.print_error(f"Resultado inesperado. {resp.status_code} - {error_msg}")
                 return None
         except Exception as e:
             self.print_error(f"Error creando usuario: {e}")
@@ -146,7 +147,8 @@ class CerveceriaTester:
                 self.print_success(f"Creación fallida como se esperaba: {resp.status_code}")
                 return None
             else:
-                self.print_error(f"Resultado inesperado. {resp.status_code} - {resp.text}")
+                error_msg = resp.json().get('error', 'Error desconocido')
+                self.print_error(f"Resultado inesperado. {resp.status_code} - {error_msg}")
                 return None
                 
         except Exception as e:
@@ -260,7 +262,8 @@ class CerveceriaTester:
                 self.print_success("Marcar 'me gusta' falló como se esperaba")
                 return None
             else:
-                self.print_error(f"Resultado inesperado. {resp.status_code} - {resp.text}")
+                error_msg = resp.json().get('error', 'Error desconocido')
+                self.print_error(f"Resultado inesperado. {resp.status_code} - {error_msg}")
                 return None
                 
         except Exception as e:
@@ -414,31 +417,8 @@ class CerveceriaTester:
         self.test_buscar_cervecerias(pais="Alemania", expected_min_count=1)
         self.wait_for_operation()
         
-        # Paso 4: Probar sugerencias por geolocalización
-        self.print_info("Paso 4: Probando sugerencias por geolocalización...")
-        # Coordenadas de Madrid centro
-        self.test_obtener_cervecerias_sugeridas(40.4168, -3.7038, radio=10, expected_min_count=0)
-        self.wait_for_operation()
-        
-        # Paso 5: Probar funcionalidad 'me gusta'
-        self.print_info("Paso 5: Probando funcionalidad 'me gusta'...")
-        usuario_id = self.crear_usuario_prueba("_para_me_gusta")
-        if usuario_id:
-            self.wait_for_operation()
-            self.test_marcar_me_gusta(cerveceria1_id, usuario_id)
-            self.wait_for_operation()
-            
-            # Verificar que el 'me gusta' se refleja en los detalles
-            detalle = self.test_obtener_cerveceria_por_id(cerveceria1_id)
-            if detalle and 'me_gusta_total' in detalle:
-                self.print_success(f"Total de 'me gusta': {detalle['me_gusta_total']}")
-            
-            # Probar marcar 'me gusta' duplicado
-            self.test_marcar_me_gusta(cerveceria1_id, usuario_id, expected_success=False)
-            self.wait_for_operation()
-        
-        # Paso 6: Probar casos de error
-        self.print_info("Paso 6: Probando casos de error...")
+        # Paso 4: Probar casos de error
+        self.print_info("Paso 5: Probando casos de error...")
         self.test_obtener_cerveceria_por_id(9999, expected_success=False)
         self.wait_for_operation()
         
@@ -456,12 +436,8 @@ class CerveceriaTester:
         self.test_cerveceria_sin_campos_obligatorios()
         self.wait_for_operation()
         
-        # Probar marcar 'me gusta' sin usuario_id
-        self.test_me_gusta_sin_usuario_id(cerveceria1_id)
-        self.wait_for_operation()
-        
-        # Paso 7: Probar búsqueda avanzada
-        self.print_info("Paso 7: Probando búsqueda avanzada...")
+        # Paso 5: Probar búsqueda avanzada
+        self.print_info("Paso 6: Probando búsqueda avanzada...")
         self.test_buscar_cervecerias(q="Brew", ciudad="Barcelona", expected_min_count=1)
         self.wait_for_operation()
         

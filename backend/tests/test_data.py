@@ -537,11 +537,11 @@ class DatabaseSeeder:
         total_eliminados = 0
         
         # Limpiar en orden inverso para respetar foreign keys
-        categorias = ['comentarios', 'degustaciones', 'usuarios', 'cervezas', 'cervecerias', 'galardones']
+        categorias = ['degustaciones', 'usuarios', 'cervezas', 'cervecerias', 'galardones']
         
         for categoria in categorias:
             if categoria in self.created_ids and self.created_ids[categoria]:
-                print(f"\n🗑️  Eliminando {categoria}...")
+                print(f"\nEliminando {categoria}...")
                 for item_id in self.created_ids[categoria][:]:
                     try:
                         if categoria == 'usuarios':
@@ -577,10 +577,12 @@ class DatabaseSeeder:
         
         # Obtener todos los elementos existentes y eliminarlos
         categorias = [
+            ('comentarios', f"{BASE_URL}/comentarios/"),
+            ('degustaciones', f"{BASE_URL}/degustaciones/"),
+            ('galardones', f"{BASE_URL}/galardones/"),
             ('usuarios', f"{BASE_URL}/usuarios/"),
             ('cervezas', f"{BASE_URL}/cervezas/"),
-            ('cervecerias', f"{BASE_URL}/cervecerias/"),
-            ('galardones', f"{BASE_URL}/galardones/")
+            ('cervecerias', f"{BASE_URL}/cervecerias/")
         ]
         
         total_eliminados = 0
@@ -591,7 +593,7 @@ class DatabaseSeeder:
                 resp = requests.get(url)
                 if resp.status_code == 200:
                     elementos = resp.json()
-                    print(f"\n🗑️  Eliminando {len(elementos)} {categoria}...")
+                    print(f"\nEliminando {len(elementos)} {categoria}...")
                     
                     for elemento in elementos:
                         try:
@@ -602,7 +604,8 @@ class DatabaseSeeder:
                                 total_eliminados += 1
                                 print(f"  ✅ {categoria[:-1]} {elemento['id']} eliminado")
                             else:
-                                print(f"  ⚠️  No se pudo eliminar {categoria} {elemento['id']}: {delete_resp.status_code}")
+                                error_msg = delete_resp.json().get('error', 'Error desconocido')
+                                print(f"  ⚠️  No se pudo eliminar {categoria} {elemento['id']}: {error_msg}")
                         except Exception as e:
                             print(f"  ❌ Error eliminando {categoria} {elemento['id']}: {e}")
                         
@@ -610,39 +613,40 @@ class DatabaseSeeder:
             except Exception as e:
                 print(f"❌ Error obteniendo {categoria}: {e}")
         
-        print(f"\n💥 Limpieza nuclear completada: {total_eliminados} elementos eliminados")
+        print(f"\nLimpieza nuclear completada: {total_eliminados} elementos eliminados")
         return True
 
     def mostrar_resumen(self):
         """Muestra un resumen de lo creado"""
         self.print_header("RESUMEN DEL POBLADO DE BASE DE DATOS")
         
-        print("📊 ESTADÍSTICAS:")
+        print("ESTADÍSTICAS:")
         print(f"   ✅ Elementos creados exitosamente: {self.stats['created']}")
         print(f"   ❌ Errores durante la creación: {self.stats['errors']}")
         
-        print("\n📦 DATOS CREADOS:")
+        print("\nDATOS CREADOS:")
         for categoria, items in self.created_ids.items():
             print(f"   🎯 {categoria.capitalize()}: {len(items)} elementos")
         
         print(f"\n🎉 ¡Base de datos lista para la demo!")
-        print("   Puedes acceder a los datos en:")
-        print(f"   👤 Usuarios: {BASE_URL}/usuarios/")
-        print(f"   🍺 Cervezas: {BASE_URL}/cervezas/")
-        print(f"   🏪 Cervecerías: {BASE_URL}/cervecerias/")
-        print(f"   🏆 Galardones: {BASE_URL}/galardones/")
+        print("Puedes acceder a los datos en:")
+        print(f"Usuarios: {BASE_URL}/usuarios/")
+        print(f"Cervezas: {BASE_URL}/cervezas/")
+        print(f"Cervecerías: {BASE_URL}/cervecerias/")
+        print(f"Galardones: {BASE_URL}/galardones/")
+        print(f"Degustaciones: {BASE_URL}/degustaciones/")
 
 # --- Ejecución principal ---
 if __name__ == "__main__":
     seeder = DatabaseSeeder()
     
-    print("🚀 INICIANDO POBLADOR DE BASE DE DATOS BEERSP")
+    print("INICIANDO POBLADOR DE BASE DE DATOS BEERSP")
     print("Asegúrate de que el servidor Flask esté ejecutándose en http://localhost:8000")
     time.sleep(2)
     
     # Poblar la base de datos
     seeder.limpiar_todo_por_api()
-    # seeder.poblar_base_datos()
+    seeder.poblar_base_datos()
  
     # Para limpiar todo, descomenta las siguientes líneas:
     # print("\n" + "="*70)

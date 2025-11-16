@@ -45,17 +45,6 @@ def crear_degustacion(db: Session, degustacion_data: dict) -> DegustacionDB:
     # Actualizar la valoración promedio de la cerveza (RF-3.4)
     actualizar_valoracion_promedio_cerveza(db, degustacion_data['cerveza_id'])
     
-    # Verificar y otorgar galardones relacionados con degustaciones (RF-4.1, RF-4.2, RF-4.3)
-    try:
-        galardon_servicio.verificar_y_otorgar_galardones_por_degustacion(
-            db=db, 
-            usuario_id=degustacion_data['usuario_id'], 
-            degustacion_nueva=db_degustacion
-        )
-    except Exception as e:
-        # No fallar la creación si hay error en galardones, solo loggear
-        print(f"Error verificando galardones: {e}")
-    
     return db_degustacion
 
 def obtener_degustacion(db: Session, degustacion_id: int) -> Optional[DegustacionDB]:
@@ -63,6 +52,13 @@ def obtener_degustacion(db: Session, degustacion_id: int) -> Optional[Degustacio
     Obtiene una degustación por ID
     """
     return db.query(DegustacionDB).filter(DegustacionDB.id == degustacion_id).first()
+
+def obtener_todas_degustaciones(db: Session, skip: int = 0, limit: int = 100) -> List[DegustacionDB]:
+    """
+    Obtiene todas las degustaciones en la base de datos
+    """
+    return db.query(DegustacionDB).order_by(desc(DegustacionDB.fecha_creacion))\
+        .offset(skip).limit(limit).all()
 
 def obtener_degustaciones_por_usuario(db: Session, usuario_id: int, skip: int = 0, limit: int = 100) -> List[DegustacionDB]:
     """
@@ -224,3 +220,27 @@ def obtener_comentarios_degustacion(db: Session, degustacion_id: int, skip: int 
     return db.query(ComentarioDegustacion).filter(
         ComentarioDegustacion.degustacion_id == degustacion_id
     ).order_by(ComentarioDegustacion.fecha_creacion).offset(skip).limit(limit).all()
+
+def obtener_todos_comentarios(db: Session, skip: int = 0, limit: int = 100) -> List[ComentarioDegustacion]:
+    """
+    Obtiene todos los comentarios en el sisteam
+    """
+    return db.query(ComentarioDegustacion).order_by(ComentarioDegustacion.fecha_creacion)\
+        .offset(skip).limit(limit).all()
+
+def obtener_comentario_degustacion_id(db: Session, comentario_id: int) -> ComentarioDegustacion:
+    """
+    Obtiene un comentario de una degustación empleando su ID
+    """
+    return db.query(ComentarioDegustacion).filter(ComentarioDegustacion.id == comentario_id).first()
+
+def eliminar_comentario(db: Session, comentario_id: int) -> bool:
+    """
+    Elimina un comentario en base a su ID
+    """
+    comentario = obtener_comentario_degustacion_id(db, comentario_id)
+    if comentario:
+        db.delete(comentario)
+        db.commit()
+        return True
+    return False

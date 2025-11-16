@@ -23,7 +23,7 @@ class UsuarioTester:
     def print_test_header(self, titulo):
         """Imprime un cabezal bonito para cada prueba"""
         print("\n" + "="*60)
-        print(f" 👤 PRUEBA: {titulo}")
+        print(f" PRUEBA: {titulo}")
         print("="*60)
     
     def print_success(self, message):
@@ -43,7 +43,7 @@ class UsuarioTester:
     
     def print_info(self, message):
         """Print info message"""
-        print(f"\nℹ️  {message}")
+        print(f"\nℹ️  {message} \n")
     
     def wait_for_operation(self, seconds=0.5):
         """Wait between operations to avoid race conditions"""

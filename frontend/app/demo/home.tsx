@@ -8,8 +8,7 @@ import {
   Image,
   TouchableOpacity,
   StatusBar,
-  FlatList,
-  Modal,
+  Modal, // --- MODIFICADO --- (FlatList ya no se usaba en este archivo)
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { theme } from './components';
@@ -18,24 +17,9 @@ import { BreweriesScreen } from './cervecerias';
 import ProfileScreen from './profile';
 import NotificationsScreen from './notifications';
 import { SearchModal } from './search';
+import api from './api'; 
 
-// Datos de prueba
-interface UserData {
-  id: string;
-  name: string;
-  username: string;
-  avatar?: string;
-}
-
-const MOCK_ALL_USERS: UserData[] = [
-  { id: 'user1', name: 'Usuario Demo', username: '@usuariodemo', avatar: 'https://placehold.co/100x100/e2e8f0/64748b?text=UD' },
-  { id: 'user2', name: 'Ana López', username: '@analopez', avatar: 'https://placehold.co/100x100/6ee7b7/064e3b?text=AL' },
-  { id: 'user3', name: 'Bruno Reyes', username: '@bruno', avatar: 'https://placehold.co/100x100/c4b5fd/4338ca?text=BR' },
-  { id: 'user4', name: 'Carlo Emilion', username: '@carlo.e', avatar: 'https://placehold.co/100x100/fca5a5/991b1b?text=CE' },
-  { id: 'user5', name: 'Daniela Silva', username: '@daniela.s', avatar: 'https://placehold.co/100x100/fcd34d/92400e?text=DS' },
-];
-
-const CURRENT_USER_ID = 'user1';
+const CURRENT_USER_ID = 1;
 
 // --- Definición de tipos ---
 type PageName = 'home' | 'breweries' | 'profile' | 'notifications';
@@ -46,7 +30,7 @@ interface HeaderProps {
 
 // --- Componentes de Layout (Header y Footer) ---
 
-const AppHeader: React.FC<{ 
+const AppHeader: React.FC<{
   headerProps: HeaderProps;
   onNavigate: (page: PageName) => void;
   onOpenSearch: () => void;
@@ -61,9 +45,9 @@ const AppHeader: React.FC<{
         <Icon name="search" size={26} color={theme.textDark} />
       </TouchableOpacity>
     )}
-    
+
     <Image source={require('../../assets/logo.png')} style={styles.logo} />
-    
+
     <TouchableOpacity onPress={() => onNavigate('notifications')}>
       <Icon name="notifications" size={26} color={theme.textDark} />
     </TouchableOpacity>
@@ -75,21 +59,18 @@ const AppFooter: React.FC<{
   onNavigate: (page: PageName) => void;
 }> = ({ activePage, onNavigate }) => (
   <View style={styles.appFooter}>
-    {/* Ítem de Cervecerías */}
     <TouchableOpacity style={styles.navItem} onPress={() => onNavigate('breweries')}>
       <Icon name="map" size={28} color={activePage === 'breweries' ? theme.primary : theme.textLight} />
       <Text style={[styles.navLabel, activePage === 'breweries' && styles.navLabelActive]}>
         Cervecerías
       </Text>
     </TouchableOpacity>
-    {/* Ítem de Inicio */}
     <TouchableOpacity style={styles.navItem} onPress={() => onNavigate('home')}>
       <Icon name="home" size={28} color={activePage === 'home' ? theme.primary : theme.textLight} />
       <Text style={[styles.navLabel, activePage === 'home' && styles.navLabelActive]}>
         Inicio
       </Text>
     </TouchableOpacity>
-    {/* Ítem de Perfil */}
     <TouchableOpacity style={styles.navItem} onPress={() => onNavigate('profile')}>
       <Icon name="person" size={28} color={activePage === 'profile' ? theme.primary : theme.textLight} />
       <Text style={[styles.navLabel, activePage === 'profile' && styles.navLabelActive]}>
@@ -103,36 +84,51 @@ const AppFooter: React.FC<{
 export default function App() {
   const [activePage, setActivePage] = useState<PageName>('home');
   const [headerProps, setHeaderProps] = useState<HeaderProps>({ onBack: null });
-  const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
   const [searchModalVisible, setSearchModalVisible] = useState(false);
-  const [friendRequests, setFriendRequests] = useState<{from: string, to: string, status: 'pending' | 'accepted' | 'rejected'}[]>([]);
-  const [friends, setFriends] = useState<string[]>(['user2', 'user3']); // simula amigos
-  
-  // Profile history stack - stores the sequence of viewed profiles
-  const [profileHistory, setProfileHistory] = useState<string[]>([CURRENT_USER_ID]);
+  const [viewingProfileId, setViewingProfileId] = useState<number | null>(null);
+  // Estado para solicitudes de amistad 
+  const [friendRequests, setFriendRequests] = useState<{ from: number, to: number, 
+    status: 'pending' | 'accepted' | 'rejected' }[]>([]);
+  // Estado para amigos que se cargará desde la API
+  const [friends, setFriends] = useState<number[]>([]);
+  // Historial de perfiles
+  const [profileHistory, setProfileHistory] = useState<number[]>([CURRENT_USER_ID]);
 
-  // Update header back button based on current state
+  // Cargar los amigos del usuario actual al iniciar la app
+  useEffect(() => {
+    const loadFriends = async () => {
+      try {
+        const friendsData = await api.users.getFriends(CURRENT_USER_ID);
+        const friendIds = friendsData.map(user => user.user_id);
+        setFriends(friendIds);
+      } catch (error) {
+        console.error("Error al cargar amigos:", error);
+      }
+    };
+
+    loadFriends();
+  }, []); 
+
+  // Efecto para actualizar el botón de atrás
   useEffect(() => {
     if (activePage === 'profile' && profileHistory.length > 1) {
-      // Show back button when viewing someone else's profile
       setHeaderProps({ onBack: handleBack });
     } else {
-      // Hide back button on home page or when viewing own profile
       setHeaderProps({ onBack: null });
     }
   }, [activePage, profileHistory]);
 
-  const handleViewProfile = (userId: string) => {
-    // Add the new profile to history and set it as current
+  // Cambio de pantalla y visualización de un perfil
+  const handleViewProfile = (userId: number) => {
     setProfileHistory(prev => [...prev, userId]);
     setViewingProfileId(userId);
     setActivePage('profile');
     setSearchModalVisible(false);
   };
 
+  // Navega a un perfil y gestiona el historial de navegación
   const handleNavigateToProfile = (page: PageName) => {
     if (page === 'profile') {
-      // When clicking profile tab, show current user's profile
       if (profileHistory[profileHistory.length - 1] !== CURRENT_USER_ID) {
         setProfileHistory(prev => [...prev, CURRENT_USER_ID]);
       }
@@ -141,42 +137,46 @@ export default function App() {
     setActivePage(page);
   };
 
-  const handleSendFriendRequest = (userId: string) => {
-    setFriendRequests(prev => [...prev, {
-      from: CURRENT_USER_ID,
-      to: userId,
-      status: 'pending'
-    }]);
-    console.log(`Friend request sent to ${userId}`);
+  // Función para enviar solicitudes de amistad
+  const handleSendFriendRequest = async (userId: number) => {
+    try {
+      // Llama a la API
+      await api.users.addFriend(CURRENT_USER_ID, userId);
+
+      // Actualiza la UI
+      setFriendRequests(prev => [...prev, {
+        from: CURRENT_USER_ID,
+        to: userId,
+        status: 'pending'
+      }]);
+      console.log(`Solicitud de amistad enviada a ${userId} via API`);
+    } catch (error) {
+      console.error("Error al enviar solicitud de amistad:", error);
+    }
   };
 
+  // Lógica sin cambios, funciona con números
   const handleBack = () => {
     if (profileHistory.length > 1) {
-      // Remove current profile from history
       const newHistory = profileHistory.slice(0, -1);
       setProfileHistory(newHistory);
-      
-      // Set the previous profile as current
+
       const previousProfileId = newHistory[newHistory.length - 1];
-      
+
       if (previousProfileId === CURRENT_USER_ID) {
-        // If going back to own profile, set to null
         setViewingProfileId(null);
       } else {
-        // If going back to another user's profile
         setViewingProfileId(previousProfileId);
       }
-      
-      // Stay on profile page
+
       setActivePage('profile');
     } else {
-      // If no more history, go to home
       setActivePage('home');
       setViewingProfileId(null);
     }
   };
 
-  // Get current profile ID to display
+  // Lógica sin cambios, ahora devuelve number | null
   const getCurrentProfileId = () => {
     if (viewingProfileId) {
       return viewingProfileId;
@@ -193,13 +193,14 @@ export default function App() {
         return <BreweriesScreen setHeaderProps={setHeaderProps} />;
       case 'profile':
         return (
-          <ProfileScreen 
+          <ProfileScreen
             userId={getCurrentProfileId()} 
-            friends={friends}
-            friendRequests={friendRequests} 
-            onSendFriendRequest={handleSendFriendRequest}
+            currentUserId={CURRENT_USER_ID}
+            friends={friends} 
+            friendRequests={friendRequests}
+            onSendFriendRequest={handleSendFriendRequest} 
             onViewProfile={handleViewProfile} 
-            setHeaderProps={setHeaderProps} 
+            setHeaderProps={setHeaderProps}
           />
         );
       case 'notifications':
@@ -212,23 +213,19 @@ export default function App() {
   return (
     <SafeAreaView style={styles.phoneMockup}>
       <StatusBar barStyle="dark-content" backgroundColor={theme.bgWhite} />
-      
-      {/* App Header */}
-      <AppHeader 
-        headerProps={headerProps} 
-        onNavigate={handleNavigateToProfile} 
+
+      <AppHeader
+        headerProps={headerProps}
+        onNavigate={handleNavigateToProfile}
         onOpenSearch={() => setSearchModalVisible(true)}
       />
 
-      {/* Main Content */}
       <ScrollView style={styles.appMain}>
         {renderPage()}
       </ScrollView>
 
-      {/* Bottom Navigation */}
       <AppFooter activePage={activePage} onNavigate={handleNavigateToProfile} />
 
-      {/* Search Modal */}
       <SearchModal
         onViewProfile={handleViewProfile}
         visible={searchModalVisible}
@@ -239,6 +236,7 @@ export default function App() {
 }
 
 // --- Estilos de App.tsx ---
+// (Sin cambios)
 const styles = StyleSheet.create({
   phoneMockup: {
     flex: 1,
