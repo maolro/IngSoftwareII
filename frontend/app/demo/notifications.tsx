@@ -7,9 +7,9 @@ export default function NotificationsScreen() {
     <View style={styles.page}>
       <Text style={styles.pageTitle}>Notificaciones</Text>
       <Card title="Actividad de Amigos">
-        <ListItem title="Ana López" subtitle="ha valorado una nueva cerveza." avatarText="AL" />
-        <ListItem title="Bruno Reyes" subtitle='ha conseguido el galardón "Nivel 5".' avatarText="BR" />
-        <ListItem title="Ana López" subtitle="ha añadido un comentario." avatarText="AL" />
+        <ListItem title="maria_catadora" subtitle="ha valorado una nueva cerveza." avatarText="MA" />
+        <ListItem title="carlos_brewmaster" subtitle='ha conseguido el galardón "Nivel 5".' avatarText="CA" />
+        <ListItem title="maria_catadora" subtitle="ha añadido un comentario." avatarText="MA" />
       </Card>
     </View>
   );

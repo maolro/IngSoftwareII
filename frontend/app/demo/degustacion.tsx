@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { theme } from './components';
-import { Cerveza } from './objects';
+import { Beer } from './api';
 
 interface ReviewFormProps {
-    beer: Cerveza;
+    beer: Beer;
     onSubmit: (review: string, rating: number) => void;
     onCancel: () => void;
 }
@@ -18,7 +18,6 @@ export const ReviewForm: React.FC<ReviewFormProps> = ({
     const [rating, setRating] = useState(0);
 
     const handleSubmit = () => {
-        // In a real app, you'd validate
         onSubmit(reviewText, rating);
     };
 
@@ -30,7 +29,7 @@ export const ReviewForm: React.FC<ReviewFormProps> = ({
             onRequestClose={onCancel}>
             <View style={styles.modalBackdrop}>
                 <View style={styles.modalContent}>
-                    <Text style={styles.modalTitle}>Añadir Reseña para {beer.name}</Text>
+                    <Text style={styles.modalTitle}>Añadir Reseña para {beer.nombre}</Text>
                     <TextInput
                         style={styles.textInput}
                         placeholder="Escribe tu reseña..."
@@ -38,7 +37,6 @@ export const ReviewForm: React.FC<ReviewFormProps> = ({
                         value={reviewText}
                         onChangeText={setReviewText}
                     />
-                    {/* A real app would have a star rating component here */}
                     <TextInput
                         style={[styles.textInput, { height: 50, marginTop: 10 }]}
                         placeholder="Rating (0-5)"

@@ -1,6 +1,8 @@
+from flask import g
 from sqlalchemy.orm import Session
 from app.objetos.galardon import Galardon, UsuarioGalardon
 from app.objetos.usuario import UsuarioDB
+import pdb
 
 # --- CRUD para la entidad Galardon (RF-4.5 Admin) ---
 
@@ -66,16 +68,17 @@ def obtener_galardones_de_usuario(db: Session, usuario_id: int):
     return db.query(UsuarioGalardon).filter(UsuarioGalardon.usuario_id == usuario_id).all()
 
 def obtener_galardon_de_usuario(db: Session, usuario_id: int, galardon_id: int):
-    """Obtiene los galardones que un usuario ha ganado (RF-5.5)"""
+    """Obtiene un galardon que haya obtenido el usuario en base a su ID"""
     # Usamos la relación para cargar los detalles del galardón automáticamente
-    return db.query(UsuarioGalardon).filter(UsuarioGalardon.usuario_id == usuario_id 
-        and UsuarioGalardon.galardon_id == galardon_id).first()
+    return db.query(UsuarioGalardon).filter((UsuarioGalardon.usuario_id == usuario_id) 
+        & (UsuarioGalardon.galardon_id == galardon_id)).first()
 
 def asignar_galardon_a_usuario(db: Session, usuario_id: int, galardon_id: int, 
     nivel_actual: int = 1, progreso_actual: int = 0) -> UsuarioGalardon:
     """
     Asigna un galardón a un usuario 
     """
+    # pdb.set_trace()
     # Check if user exists
     usuario = db.query(UsuarioDB).filter(UsuarioDB.id == usuario_id).first()
     if not usuario:
@@ -115,6 +118,23 @@ def asignar_galardon_a_usuario(db: Session, usuario_id: int, galardon_id: int,
     except Exception as e:
         db.rollback()
         raise e
+    
+def eliminar_galardon_usuario(db: Session, user_id: int, galardon_id: int) -> bool:
+    """
+    Elimina un galardón de un usuario
+    """
+    try:
+        galardon_usuario = obtener_galardon_de_usuario(db, user_id, galardon_id)
+        if galardon_usuario:
+            db.delete(galardon_usuario)
+            db.commit()
+            return True
+        return False
+            
+    except Exception as e:
+        db.rollback()
+        print(f"Error eliminando galardón de usuario: {e}")
+        return False
 
 # --- Lógica de Negocio ---
 # Esta función la llamarán tus compañeros desde sus servicios
@@ -143,3 +163,4 @@ def verificar_y_otorgar_galardones_por_comentario(db: Session, usuario_id: int):
     """
     print(f"Verificando galardones para usuario {usuario_id} por nuevo comentario...")
     pass
+

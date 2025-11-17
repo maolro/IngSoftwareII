@@ -20,7 +20,8 @@ class Galardon(Base):
     condiciones = Column(JSON, nullable=True)
     
     # Relación para saber qué usuarios tienen este galardón
-    usuarios_que_lo_tienen = relationship("UsuarioGalardon", back_populates="galardon")
+    usuarios_que_lo_tienen = relationship("UsuarioGalardon", 
+        back_populates="galardon", cascade="all, delete-orphan")
 
     # Convierte  en diccionario
     def to_dict(self):

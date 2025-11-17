@@ -92,11 +92,14 @@ export default function ProfileScreen({
       setIsTabLoading(true);
       try {
         if (activeTab === 'friends' && !hasFetchedFriends) {
-          const friendsData = await api.users.getFriends(viewingProfile.user_id);
+          console.log("Cargando amigos para usuario con ID: "+viewingProfile.id);
+          const friendsData = await api.users.getFriends(viewingProfile.id);
           setProfileFriends(friendsData);
           setHasFetchedFriends(true);
-        } else if (activeTab === 'reviews' && !hasFetchedTastings) {
-          const tastingsData = await api.degustaciones.getByUser(viewingProfile.user_id);
+        } 
+        else if (activeTab === 'reviews' && !hasFetchedTastings) {
+          console.log("Cargando degustaciones para usuario con ID: "+viewingProfile.id);
+          const tastingsData = await api.degustaciones.getByUser(viewingProfile.id);
           setProfileTastings(tastingsData);
           setHasFetchedTastings(true);
         }
@@ -116,10 +119,10 @@ export default function ProfileScreen({
   const friendStatus = () => {
     if (!viewingProfile) return 'none'; 
 
-    if (friends.includes(viewingProfile.user_id)) {
+    if (friends.includes(viewingProfile.id)) {
       return 'friends';
     }
-    if (friendRequests.some(req => req.to === viewingProfile.user_id && req.status === 'pending')) {
+    if (friendRequests.some(req => req.to === viewingProfile.id && req.status === 'pending')) {
       return 'pending';
     }
     return 'none';
@@ -151,7 +154,7 @@ export default function ProfileScreen({
     };
 
     try {
-      const updatedUser = await api.users.update(viewingProfile.user_id, dataToUpdate);
+      const updatedUser = await api.users.update(currentUserId, dataToUpdate);
 
       // Actualiza el estado local con la respuesta del servidor
       setViewingProfile(updatedUser);
@@ -167,13 +170,14 @@ export default function ProfileScreen({
   // --- MODIFICADO ---
   // Selecciona para ver datos de un amigo (ahora usa User)
   const handleSelectFriend = (friend: User) => {
-    onViewProfile(friend.user_id);
+    console.log("Seleccionando perfil amigo ID: "+friend.id)
+    onViewProfile(friend.id);
   };
 
   // Función para añadir amigo 
   const handleAddFriend = () => {
     if (!viewingProfile) return;
-    onSendFriendRequest(viewingProfile.user_id);
+    onSendFriendRequest(viewingProfile.id);
     Alert.alert(
       'Solicitud de Amistad',
       `Solicitud enviada a ${viewingProfile.username}` // Usamos username
@@ -339,7 +343,7 @@ export default function ProfileScreen({
           )}
           {profileFriends.map(friend => (
             <TouchableListItem
-              key={friend.user_id}
+              key={friend.id}
               title={friend.username}
               subtitle={friend.email}
               avatarText={friend.username.substring(0, 2).toUpperCase()}

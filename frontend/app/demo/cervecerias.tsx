@@ -1,73 +1,67 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Card, ListItem, TouchableListItem, theme} from './components';
-import { Cerveza, Cerveceria, Degustacion } from './objects';
 import { ReviewForm } from './degustacion';
-
-// Datos de prueba para cervecerías (luego se cogerán usando la API)
-const MOCK_BREWERIES: Cerveceria[] = [
-  { id: 'b1', name: 'La Fábrica Maravillas', address: 'Calle de Valverde, 29, Madrid' },
-  { id: 'b2', name: 'Peninsula', address: 'Calle de La Ruda, 12, Madrid' },
-  { id: 'b3', name: 'El Oso y el Madroño Taproom', address: 'Calle de la Victoria, 3, Madrid' },
-];
-
-// Datos de prueba para cervezas (luego se cogerán usando la API)
-export const MOCK_BEERS: Cerveza[] = [
-  { id: 'beer1', name: 'Malasaña Ale', style: 'Pale Ale', rating: 4.2, breweryId: 'b1' },
-  { id: 'beer2', name: 'Maravillas Pilsner', style: 'Pilsner', rating: 4.0, breweryId: 'b1' },
-  { id: 'beer3', name: 'Puro Tropico', style: 'IPA', rating: 4.5, breweryId: 'b2' },
-  { id: 'beer4', name: 'Hop Revolution', style: 'NEIPA', rating: 4.7, breweryId: 'b2' },
-  { id: 'beer5', 'name': 'Oso Famoso', style: 'Lager', rating: 3.8, breweryId: 'b3' },
-];
-
-// Datos de prueba para degustaciones (luego se cogerán usando la API)
-const MOCK_REVIEWS: Degustacion[] = [
-  { id: 'r1', beerId: 'beer1', author: 'Ana López', text: 'Muy sabrosa, un clásico de Malasaña.', rating: 4.0 },
-  { id: 'r2', beerId: 'beer3', author: 'Bruno Reyes', text: '¡Tropicana pura! Me encanta.', rating: 5.0 },
-  { id: 'r3', beerId: 'beer4', author: 'Usuario Demo', text: 'Increíblemente turbia y frutal.', rating: 4.8 },
-  { id: 'r4', beerId: 'beer5', author: 'Ana López', text: 'Una lager sencilla, para pasar el rato.', rating: 3.0 },
-  { id: 'r5', beerId: 'beer1', author: 'Carlos Diaz', text: 'Un poco cara, pero buena.', rating: 3.5 },
-];
+import api, { Beer, Brewery, Tasting } from './api'
 
 // Lista de todas las cervecerías
 const BreweryList: React.FC<{
-  onSelectBrewery: (brewery: Cerveceria) => void;
-}> = ({ onSelectBrewery }) => (
+  onSelectBrewery: (brewery: Brewery) => void;
+  breweries: Brewery[];
+  loading: boolean;
+}> = ({ onSelectBrewery, breweries, loading }) => (
   <View style={styles.page}>
     <Text style={styles.pageTitle}>Cervecerías</Text>
     <Card title="Cervecerías Cercanas">
-      {MOCK_BREWERIES.map(brewery => (
-        <TouchableListItem
-          key={brewery.id}
-          title={brewery.name}
-          subtitle={brewery.address}
-          iconName="storefront"
-          onPress={() => onSelectBrewery(brewery)}
-        />
-      ))}
+      { loading ? (
+          <ActivityIndicator size="small" color={theme.primary} />
+        ) : breweries.length > 0 ? (
+              breweries.map(brewery => (
+                <TouchableListItem
+                  key={brewery.id}
+                  title={brewery.nombre}
+                  subtitle={"" + brewery.direccion + ", " + brewery.pais}
+                  iconName="storefront"
+                  onPress={() => onSelectBrewery(brewery)}
+                />
+              ))
+            ) : (
+              <Text style={styles.emptyStateText}>
+                No hay cervecerías disponibles.
+              </Text>
+        )
+      }
     </Card>
   </View>
 );
 
 // Detalles de una cervecería
+// Detalles de una cervecería
 const BreweryDetail: React.FC<{
-  brewery: Cerveceria;
-  onSelectBeer: (beer: Cerveza) => void;
-}> = ({ brewery, onSelectBeer }) => {
-  const beers = MOCK_BEERS.filter(beer => beer.breweryId === brewery.id);
-
+  brewery: Brewery;
+  onSelectBeer: (beer: Beer) => void;
+  beers: Beer[];
+  loading: boolean;
+}> = ({ brewery, onSelectBeer, beers, loading }) => {
+  // Filtro de las cervezas
+  const breweryBeers = beers.filter(beer => 
+    true
+  );
   return (
     <View style={styles.page}>
-      <Text style={styles.detailTitle}>{brewery.name}</Text>
-      <Text style={styles.detailSubtitle}>{brewery.address}</Text>
+      <Text style={styles.detailTitle}>{brewery.nombre}</Text>
+      <Text style={styles.detailSubtitle}>{"" + brewery.direccion + ", "
+       + brewery.ciudad + ", " + brewery.pais}</Text>
 
-      <Card title="Cervezas">
-        {beers.length > 0 ? (
-          beers.map(beer => (
+      <Card title="Cervezas Disponibles">
+        {loading ? (
+          <ActivityIndicator size="small" color={theme.primary} />
+        ) : breweryBeers.length > 0 ? (
+          breweryBeers.map(beer => (
             <TouchableListItem
               key={beer.id}
-              title={beer.name}
-              subtitle={beer.style}
+              title={beer.nombre}
+              subtitle={`${beer.estilo} · ${beer.pais_procedencia}`}
               iconName="sports-bar"
               onPress={() => onSelectBeer(beer)}
             />
@@ -82,32 +76,45 @@ const BreweryDetail: React.FC<{
   );
 };
 
-// Screen 2.3: Details for one beer
-const BeerDetail: React.FC<{beer: Cerveza; onWriteReview: () => void; reviews: Degustacion[];}
-> = ({ beer, onWriteReview, reviews }) => {
+// Detalles sobre una cerveza
+const BeerDetail: React.FC<{
+  beer: Beer;
+  onWriteReview: () => void;
+  reviews: Tasting[];
+  loading: boolean;
+}> = ({ beer, onWriteReview, reviews, loading }) => {
   return (
     <View style={styles.page}>
-      <Text style={styles.detailTitle}>{beer.name}</Text>
-      <Text style={styles.detailSubtitle}>{beer.style}</Text>
-      <Text style={styles.detailRating}>Rating Promedio: {beer.rating} ★</Text>
+      <Text style={styles.detailTitle}>{beer.nombre}</Text>
+      <Text style={styles.detailSubtitle}>{beer.estilo}</Text>
+      <Text style={styles.detailRating}>
+        {beer.valoracion_promedio ? 
+          `Rating Promedio: ${beer.valoracion_promedio} ★` : 
+          'Sin valoraciones aún'
+        }
+      </Text>
 
       <TouchableOpacity style={styles.button} onPress={onWriteReview}>
-        <Text style={styles.buttonText}>Añadir Reseña</Text>
+        <Text style={styles.buttonText}>Añadir Degustación</Text>
       </TouchableOpacity>
 
-      <Card title="Reseñas Recientes">
-        {reviews.length > 0 ? (
+      <Card title="Degustaciones Recientes">
+        {loading ? (
+          <ActivityIndicator size="small" color={theme.primary} />
+        ) : reviews.length > 0 ? (
           reviews.map(review => (
             <ListItem
               key={review.id}
-              title={review.author}
-              subtitle={`${review.text} (${review.rating} ★)`}
-              avatarText={review.author.substring(0, 2).toUpperCase()}
+              title={`${review.nombre_usuario || 'Usuario'}`}
+              subtitle={`${review.comentario || 'Sin comentario'} ${
+                review.puntuacion ? `(${review.puntuacion} ★)` : ''
+              }`}
+              avatarText={review.nombre_usuario?.substring(0, 2).toUpperCase() || 'U'}
             />
           ))
         ) : (
           <Text style={styles.emptyStateText}>
-            No hay reseñas para esta cerveza. ¡Sé el primero!
+            No hay degustaciones para esta cerveza. ¡Sé el primero!
           </Text>
         )}
       </Card>
@@ -115,94 +122,206 @@ const BeerDetail: React.FC<{beer: Cerveza; onWriteReview: () => void; reviews: D
   );
 };
 
-// --- Main Navigator Component for this Feature ---
+// --- Componente principal ---
 
 interface BreweryFeatureScreenProps {
-  // This prop will be used to update the main App header
-  setHeaderProps: (props: { title: string; onBack: (() => void) | null }) => void;
+  // Variables que recibe de la cabecera
+  userId: number; 
+  setHeaderProps: (props: { onBack: (() => void) | null }) => void;
 }
 
+// Pantalla que se exporta
 export const BreweriesScreen: React.FC<BreweryFeatureScreenProps> = ({
-  setHeaderProps,
+  userId, setHeaderProps,
 }) => {
-  const [selectedBrewery, setSelectedBrewery] = useState<Cerveceria | null>(null);
-  const [selectedBeer, setSelectedBeer] = useState<Cerveza | null>(null);
+  const [selectedBrewery, setSelectedBrewery] = useState<Brewery | null>(null);
+  const [selectedBeer, setSelectedBeer] = useState<Beer | null>(null);
   const [isWritingReview, setIsWritingReview] = useState<boolean>(false);
-  const [reviews, setReviews] = useState<Degustacion[]>(MOCK_REVIEWS);
+  
+  // Estados de datos desde API
+  const [breweries, setBreweries] = useState<Brewery[]>([]);
+  const [beers, setBeers] = useState<Beer[]>([]);
+  const [reviews, setReviews] = useState<Tasting[]>([]);
+  
+  // Estados de carga
+  const [isLoading, setIsLoading] = useState(true);
+  const [isBreweriesLoading, setIsBreweriesLoading] = useState(false);
+  const [isBeersLoading, setIsBeersLoading] = useState(false);
+  const [isReviewsLoading, setIsReviewsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // --- Navigation Handlers ---
-  const handleSelectBrewery = (brewery: Cerveceria) => {
+  // Cargar datos iniciales
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  const loadInitialData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Cargar cervecerías y cervezas en paralelo
+      const [breweriesData, beersData] = await Promise.all([
+        api.breweries.getAll(),
+        api.beers.getAll()
+      ]);
+
+      setBreweries(breweriesData);
+      setBeers(beersData);
+      
+    } catch (err) {
+      console.error('Error cargando datos iniciales:', err);
+      setError('Error al cargar los datos');
+      Alert.alert("Error", "No se pudieron cargar las cervecerías y cervezas");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Cargar degustaciones cuando se selecciona una cerveza
+  useEffect(() => {
+    if (selectedBeer) {
+      loadBeerReviews(selectedBeer.id);
+    }
+  }, [selectedBeer]);
+
+  const loadBeerReviews = async (beerId: number) => {
+    try {
+      setIsReviewsLoading(true);
+      const reviewsData = await api.degustaciones.getByBeer(beerId);
+      setReviews(reviewsData);
+    } catch (err) {
+      console.error('Error cargando degustaciones:', err);
+      Alert.alert("Error", "No se pudieron cargar las degustaciones");
+    } finally {
+      setIsReviewsLoading(false);
+    }
+  };
+
+  // --- Gestores de Navegación ---
+  const handleSelectBrewery = (brewery: Brewery) => {
     setSelectedBrewery(brewery);
-    setHeaderProps({ title: brewery.name, onBack: handleBackToBreweries });
+    setHeaderProps({ onBack: handleBackToBreweries });
   };
   
-  const handleSelectBeer = (beer: Cerveza) => {
+  const handleSelectBeer = (beer: Beer) => {
     setSelectedBeer(beer);
-    setHeaderProps({ title: beer.name, onBack: handleBackToBrewery });
+    setHeaderProps({ onBack: handleBackToBrewery });
   };
   
   const handleWriteReview = () => setIsWritingReview(true);
 
-  // --- Back Handlers ---
+  // --- Gestión de la cabecera para volver atrás ---
   const handleBackToBreweries = () => {
     setSelectedBrewery(null);
-    setHeaderProps({ title: 'BeerSP', onBack: null });
+    setSelectedBeer(null);
+    setReviews([]);
+    setHeaderProps({ onBack: null });
   };
   
   const handleBackToBrewery = () => {
     setSelectedBeer(null);
+    setReviews([]);
     if (selectedBrewery) {
-      setHeaderProps({ title: selectedBrewery.name, onBack: handleBackToBreweries });
+      setHeaderProps({ onBack: handleBackToBreweries });
     }
   };
 
   const handleCancelReview = () => setIsWritingReview(false);
 
-  // --- Submit Handler ---
-  const handleSubmitReview = (review: string, rating: number) => {
-    if (!selectedBeer) return; // Safety check
+  // --- Submit para nueva degustación ---
+  const handleSubmitReview = async (review: string, rating: number) => {
+    if (!selectedBeer) return;
 
-    const newReview: Degustacion = {
-      id: `review_${Date.now()}`, 
-      beerId: selectedBeer.id,
-      author: 'Usuario Demo', 
-      text: review,
-      rating: rating,
-    };
-    // Añade la nueva degustación
-    setReviews(prevReviews => [newReview, ...prevReviews]);
-    console.log(`Review for ${selectedBeer?.name}: ${review}, Rating: ${rating}`);
-    setIsWritingReview(false);
+    try {
+      // Crear la nueva degustación
+      const newTasting = await api.degustaciones.create({
+        usuario_id: userId, // ID del usuario actual
+        cerveza_id: selectedBeer.id,
+        cerveceria_id: selectedBrewery?.id,
+        puntuacion: rating,
+        comentario: review,
+      });
+
+      // Actualizar la lista de degustaciones
+      setReviews(prev => [newTasting, ...prev]);
+      await loadBeerReviews(selectedBeer.id);
+      
+      // Actualizar la cerveza para reflejar posible cambio en valoración
+      const updatedBeer = await api.beers.getById(selectedBeer.id);
+      setBeers(prev => prev.map(beer => 
+        beer.id === selectedBeer.id ? updatedBeer : beer
+      ));
+
+      console.log(`Degustación creada para ${selectedBeer.nombre}: ${review}, Rating: ${rating}`);
+      setIsWritingReview(false);
+      
+      Alert.alert("Éxito", "Degustación añadida correctamente");
+      
+    } catch (err) {
+      console.error('Error creating tasting:', err);
+      Alert.alert("Error", "No se pudo crear la degustación");
+    }
   };
+
+  // --- Renderizado de estados de carga/error ---
+  if (isLoading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <Text style={styles.loadingText}>Cargando cervecerías y cervezas...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={loadInitialData}>
+          <Text style={styles.retryButtonText}>Reintentar</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   // --- Lógica de renderización ---
   const renderContent = () => {
     if (selectedBeer) {
-      // Filtra las reseñas
-      const beerReviews = reviews.filter(r => r.beerId === selectedBeer.id);
-      
       return (
         <BeerDetail 
           beer={selectedBeer} 
           onWriteReview={handleWriteReview} 
-          reviews={beerReviews} // Pasa reseñas filtradas
+          reviews={reviews}
+          loading={isReviewsLoading}
         />
       );
     }
+    
     if (selectedBrewery) {
       return (
         <BreweryDetail
           brewery={selectedBrewery}
           onSelectBeer={handleSelectBeer}
+          beers={beers}
+          loading={isBeersLoading}
         />
       );
     }
-    return <BreweryList onSelectBrewery={handleSelectBrewery} />;
+    
+    return (
+      <BreweryList 
+        onSelectBrewery={handleSelectBrewery} 
+        breweries={breweries}
+        loading={isBreweriesLoading}
+      />
+    );
   };
 
   return (
     <>
       {renderContent()}
+      
       {isWritingReview && selectedBeer && (
         <ReviewForm
           beer={selectedBeer}
@@ -256,5 +375,32 @@ const styles = StyleSheet.create({
     color: theme.bgWhite,
     fontSize: 16,
     fontWeight: '700',
+  },
+  loadingText: {
+    marginTop: 12,
+    color: theme.textLight,
+    textAlign: 'center',
+  },
+  errorText: {
+    color: theme.red,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: theme.primary,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  retryButtonText: {
+    color: theme.bgWhite,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
 });

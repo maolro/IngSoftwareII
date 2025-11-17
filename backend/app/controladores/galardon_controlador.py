@@ -27,7 +27,7 @@ def crear_nuevo_galardon():
     except ValueError as e:
         return jsonify({"error": str(e)}), 409
     except Exception as e:
-        abort(500, description=str(e))
+        return jsonify({"error": str(e)}), 500
 
 @galardon_bp.route("/galardones/", methods=["GET"])
 def leer_galardones():
@@ -44,7 +44,7 @@ def leer_galardones():
         galardones_dict = [galardon.to_dict() for galardon in galardones]
         return jsonify(galardones_dict), 200
     except Exception as e:
-        abort(500, description=str(e))
+        return jsonify({"error": str(e)}), 500
 
 @galardon_bp.route("/galardones/<int:galardon_id>/", methods=["GET"])
 def leer_galardon_por_id(galardon_id: int):
@@ -93,9 +93,9 @@ def eliminar_galardon_por_id(galardon_id: int):
             return jsonify({"error": "Galardon no encontrado"}), 404
         return jsonify({"message": "Galardon eliminado exitosamente"}), 200
     except Exception as e:
-        abort(500, description=str(e))
+        return jsonify({"error": str(e)}), 500
 
-@galardon_bp.route("/usuarios/<int:usuario_id>/galardones", methods=["GET"])
+@galardon_bp.route("/usuarios/<int:usuario_id>/galardones/", methods=["GET"])
 def leer_galardones_de_usuario(usuario_id: int):
     """
     Obtiene la lista de galardones que ha ganado un usuario específico (RF-5.5)
@@ -110,14 +110,16 @@ def leer_galardones_de_usuario(usuario_id: int):
         # Convierte a lista de diccionarios
         galardones_dict = []
         for usuario_galardon in galardones:
-            galardon_dict = usuario_galardon.to_dict()
+            galardon = galardon_servicio.obtener_galardon(
+                db=g.db, galardon_id=usuario_galardon.galardon_id)
+            galardon_dict = galardon.to_dict()
             galardones_dict.append(galardon_dict)
             
         return jsonify(galardones_dict), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@galardon_bp.route("/usuarios/<int:usuario_id>/galardones", methods=["POST"])
+@galardon_bp.route("/usuarios/<int:usuario_id>/galardones/", methods=["POST"])
 def asignar_galardon_a_usuario(usuario_id: int):
     """
     Asigna un galardón a un usuario específico
@@ -153,3 +155,41 @@ def asignar_galardon_a_usuario(usuario_id: int):
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": f"Error interno del servidor: {str(e)}"}), 500
+    
+@galardon_bp.route("/usuarios/<int:usuario_id>/galardones/<int:galardon_id>/", methods=["GET"])
+def obtener_galardon_de_usuario(usuario_id: int, galardon_id: int):
+    """
+    Obtiene un galardón específico perteneciente a un usuario
+    """
+    try:
+        usuario_galardon = galardon_servicio.obtener_galardon_de_usuario(
+            db=g.db, usuario_id=usuario_id, galardon_id=galardon_id)
+        
+        # Si no existe devuelve error 404
+        if not usuario_galardon:
+           return jsonify({"error": "El usuario no tiene el galardón indicado"}), 404
+        
+        # Obtiene datos del galardón
+        galardon = galardon_servicio.obtener_galardon(
+            db=g.db, galardon_id=usuario_galardon.galardon_id)
+        
+        if galardon:
+            # Devuelve como JSON
+            return jsonify(galardon.to_dict()), 200
+        return jsonify({"error": "El galardón indicado no existe"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@galardon_bp.route("/usuarios/<int:usuario_id>/galardones/<int:galardon_id>/", methods=["DELETE"])
+def eliminar_galardon_de_usuario(usuario_id: int, galardon_id: int):
+    """
+    Elimina un galardón de un usuario
+    """
+    try:
+        eliminado = galardon_servicio.eliminar_galardon_usuario(
+            db=g.db, user_id=usuario_id, galardon_id=galardon_id)
+        if not eliminado:
+            return jsonify({"error": "Galardon no encontrado"}), 404
+        return jsonify({"message": "Galardon eliminado exitosamente"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

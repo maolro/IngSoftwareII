@@ -3,7 +3,7 @@ from uuid import uuid4
 from sqlalchemy import Connection, MetaData, Table, create_engine, select, text, except_
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 
-from ..objetos.usuario import Usuario, UsuarioDB, UsuarioCreate
+from ..objetos.usuario import UsuarioDB, UsuarioCreate
 
 table_name = "users"
 
@@ -12,10 +12,6 @@ from sqlalchemy import exc
 from typing import List, Optional
 from uuid import UUID
 from passlib.context import CryptContext # Para hashear contraseñas
-
-# Importamos los modelos de la base de datos (DB) y los modelos Pydantic (objetos)
-# Asumiendo que están en 'app/objetos/usuario.py' según tus imports
-from ..objetos.usuario import Usuario
 
 # Configuración del contexto de hasheo de contraseñas
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

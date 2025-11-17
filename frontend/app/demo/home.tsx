@@ -8,11 +8,11 @@ import {
   Image,
   TouchableOpacity,
   StatusBar,
-  Modal, // --- MODIFICADO --- (FlatList ya no se usaba en este archivo)
+  Modal, 
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { theme } from './components';
-import Dashboard from './dashboard';
+import { DashboardScreen } from './dashboard';
 import { BreweriesScreen } from './cervecerias';
 import ProfileScreen from './profile';
 import NotificationsScreen from './notifications';
@@ -99,7 +99,8 @@ export default function App() {
     const loadFriends = async () => {
       try {
         const friendsData = await api.users.getFriends(CURRENT_USER_ID);
-        const friendIds = friendsData.map(user => user.user_id);
+        const friendIds = friendsData.map(user => user.id);
+        console.log("Amigos: "+friendIds.toString())
         setFriends(friendIds);
       } catch (error) {
         console.error("Error al cargar amigos:", error);
@@ -132,7 +133,7 @@ export default function App() {
       if (profileHistory[profileHistory.length - 1] !== CURRENT_USER_ID) {
         setProfileHistory(prev => [...prev, CURRENT_USER_ID]);
       }
-      setViewingProfileId(null);
+      setViewingProfileId(CURRENT_USER_ID);
     }
     setActivePage(page);
   };
@@ -176,7 +177,6 @@ export default function App() {
     }
   };
 
-  // Lógica sin cambios, ahora devuelve number | null
   const getCurrentProfileId = () => {
     if (viewingProfileId) {
       return viewingProfileId;
@@ -188,9 +188,9 @@ export default function App() {
   const renderPage = () => {
     switch (activePage) {
       case 'home':
-        return <Dashboard />;
+        return <DashboardScreen userId={CURRENT_USER_ID} />;
       case 'breweries':
-        return <BreweriesScreen setHeaderProps={setHeaderProps} />;
+        return <BreweriesScreen userId={CURRENT_USER_ID} setHeaderProps={setHeaderProps} />;
       case 'profile':
         return (
           <ProfileScreen
@@ -206,7 +206,7 @@ export default function App() {
       case 'notifications':
         return <NotificationsScreen />;
       default:
-        return <Dashboard />;
+        return <DashboardScreen userId={CURRENT_USER_ID} />;
     }
   };
 

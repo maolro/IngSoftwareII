@@ -1,9 +1,6 @@
 from flask import Blueprint, jsonify, request, abort, g
 from sqlalchemy.orm import Session
 from typing import List
-
-from ..objetos.usuario import Usuario, UsuarioCreate
-from ..objetos.amistad import FriendRelationship, FriendRequest
 from ..servicios.usuario_servicio import UsuarioServicio
 
 # --- Inicialización ---
@@ -89,7 +86,7 @@ def get_user_by_id(user_id: int):
             }), 404
             
         usuario_response = {
-            "user_id": db_user.id, 
+            "id": db_user.id, 
             "username": db_user.username,
             "email": db_user.email,
             "birth_date": db_user.birth_date.isoformat() if db_user.birth_date else None,
@@ -127,7 +124,7 @@ def update_user_by_id(user_id: int):
             }), 404
             
         usuario_response = {
-            "user_id": db_user.id, 
+            "id": db_user.id, 
             "username": db_user.username,
             "email": db_user.email,
             "birth_date": db_user.birth_date.isoformat() if db_user.birth_date else None,
@@ -220,7 +217,7 @@ def get_user_friends(user_id: int):
         friend_responses = []
         for friend in friends:
             friend_responses.append({
-                "user_id": friend.id,
+                "id": friend.id,
                 "username": friend.username,
                 "email": friend.email,
                 "birth_date": friend.birth_date.isoformat() if friend.birth_date else None,
@@ -259,7 +256,7 @@ def get_friend_info(user_id: int, friend_id: int):
         
         # Devuelve información de usuario
         friend_response = {
-            "user_id": db_friend.id, 
+            "id": db_friend.id, 
             "username": db_friend.username,
             "email": db_friend.email,
             "birth_date": db_friend.birth_date.isoformat() if db_friend.birth_date else None,

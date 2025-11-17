@@ -129,7 +129,6 @@ class CervezaService:
                 
         # # 'favoritas' es una lista de tuplas: [(Cerveza, 5.0), (Cerveza, 4.5)]
         # # La convertimos al formato diccionario que pedía el placeholder:
-        pdb.set_trace()
         res = [
             {
                 "id": cerveza.id,

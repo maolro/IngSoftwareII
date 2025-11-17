@@ -14,16 +14,6 @@ user_friends = Table(
     Column('created_at', TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 )
 
-# Entidad del usuario con sus campos    
-@dataclass
-class Usuario:
-    user_id: int
-    username: str
-    email: str
-    password: str
-    friends: list[int]
-    birth_date: date
-
 @dataclass
 class UsuarioCreate:
     username: str

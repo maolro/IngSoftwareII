@@ -1,9 +1,10 @@
 // api.tsx
-const API_BASE_URL = 'http://localhost:8000/api';
+//const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = 'http://10.0.2.2:8000/api';
 
 // Interfaces para los tipos de datos
 export interface User {
-  user_id: number;
+  id: number;
   username: string;
   email: string;
   birth_date?: string;
@@ -59,6 +60,15 @@ export interface Comment {
   comentario: string;
   fecha_creacion?: string;
   usuario?: User;
+}
+
+export interface Award {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  nivel?: string;
+  fecha_obtencion?: string;
+  icono?: string;
 }
 
 // Cliente API genérico
@@ -167,14 +177,14 @@ export const api = {
     delete: (id: number): Promise<void> => apiClient.delete(`/usuarios/${id}/`),
     
     // Amigos
-    getFriends: (userId: number): Promise<User[]> => 
-      apiClient.get(`/usuarios/${userId}/amigos/`),
+    getFriends: (id: number): Promise<User[]> => 
+      apiClient.get(`/usuarios/${id}/amigos/`),
     
-    addFriend: (userId: number, friendId: number): Promise<any> =>
-      apiClient.post(`/usuarios/${userId}/amigos/`, { friend_id: friendId }),
+    addFriend: (id: number, friendId: number): Promise<any> =>
+      apiClient.post(`/usuarios/${id}/amigos/`, { friend_id: friendId }),
     
-    removeFriend: (userId: number, friendId: number): Promise<void> =>
-      apiClient.delete(`/usuarios/${userId}/amigos/${friendId}/`),
+    removeFriend: (id: number, friendId: number): Promise<void> =>
+      apiClient.delete(`/usuarios/${id}/amigos/${friendId}/`),
   },
 
   // --- CERVEZAS ---
@@ -287,10 +297,10 @@ export const api = {
     delete: (id: number): Promise<void> => apiClient.delete(`/cervecerias/${id}/`),
   },
 
-  // --- GALARDONES (si los necesitas) ---
+  // --- GALARDONES ---
   awards: {
-    getAll: (): Promise<any[]> => apiClient.get('/galardones/'),
-    getByUser: (userId: number): Promise<any[]> => 
+    getAll: (): Promise<Award[]> => apiClient.get('/galardones/'),
+    getByUser: (userId: number): Promise<Award[]> => 
       apiClient.get(`/usuarios/${userId}/galardones/`),
   },
 };

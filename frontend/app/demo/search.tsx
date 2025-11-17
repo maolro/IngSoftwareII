@@ -19,10 +19,7 @@ const CURRENT_USER_ID = 1;
 interface SearchModalProps {
   visible: boolean;
   onClose: () => void;
-  onSendFriendRequest: (userId: number) => void;
   onViewProfile: (userId: number) => void;
-  friendRequests: { from: number, to: number, status: 'pending' | 'accepted' | 'rejected' }[];
-  friends: number[];
 }
 
 export const SearchModal: React.FC<SearchModalProps> = ({
@@ -67,11 +64,11 @@ export const SearchModal: React.FC<SearchModalProps> = ({
       return;
     }
 
-    // Filtra los usuarios LOCALMENTE
+    // Filtra los usuarios localmente
     const filteredUsers = allUsers.filter(user =>
-      user.user_id !== CURRENT_USER_ID && // Excluir al usuario actual
+      user.id !== CURRENT_USER_ID && // Excluir al usuario actual
       (user.username.toLowerCase().includes(query.toLowerCase()) ||
-        (user.email && user.email.toLowerCase().includes(query.toLowerCase()))) // Tu API User tiene username y email
+        (user.email && user.email.toLowerCase().includes(query.toLowerCase())))
     );
     setSearchResults(filteredUsers);
   };
@@ -82,7 +79,10 @@ export const SearchModal: React.FC<SearchModalProps> = ({
       <TouchableOpacity
         style={styles.userInfo}
         onPress={() => {
-          onViewProfile(item.user_id); 
+          console.log('Selected user:', item.id, item.username);
+          onViewProfile(item.id);
+          setSearchQuery('');
+          setSearchResults([]);
         }}
       >
         <Image
@@ -155,7 +155,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
   );
 };
 
-// --- Estilos (sin cambios) ---
+// --- Estilos ---
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
@@ -233,7 +233,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.textLight,
   },
-  // ... (los demás estilos que no se usan) ...
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
