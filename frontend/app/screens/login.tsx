@@ -12,24 +12,31 @@ export default function PasswordRecoverScreen() {
     const router = useRouter();
 
     // Función de gestión de login
-    const handleLogin = () => {
+    const handleLogin = async () => {
         try {
-            const userData = api.users.login(username, password)
-            console.log("Datos de usuario: "+userData.toString())
-            if (userData) {
-                // En éxito elimina el error y va al home
+            // 1. Llamada asíncrona a la API
+            const response = await api.users.login(username, password);
+            console.log("Respuesta login:", JSON.stringify(response));
+            const user = response;
+
+            if (user && user.id) {
+                // En éxito elimina el error
                 setLoginError(false);
-                router.push('./home');
-            } 
-            else {
-                // En caso de error actualiza el error
+                
+                // Navega al home pasando el ID del usuario como parámetro
+                // Se usa replace para que no puedan volver atrás al login
+                router.replace({
+                    pathname: './home',
+                    params: { userId: user.id }
+                });
+            } else {
                 setLoginError(true);
             }
         } 
         catch (error) {
             console.error("Error al cargar el usuario:", error);
+            setLoginError(true);
         }
-
     };
 
     return (
@@ -53,6 +60,7 @@ export default function PasswordRecoverScreen() {
               placeholder="Contraseña"
               autoCapitalize="none"
               value={password}
+              secureTextEntry={true}
               onChangeText={setPassword}
             />
     

@@ -338,14 +338,12 @@ def login():
                 
         # Preparar respuesta
         response_data = {
-            "user": {
-                "id": usuario.id, 
-                "username": usuario.username,
-                "email": usuario.email,
-                "birth_date": usuario.birth_date.isoformat() if usuario.birth_date else None,
-                "friends": [friend.id for friend in usuario.friends] 
-                    if hasattr(usuario, 'friends') else []
-            }
+            "id": usuario.id, 
+            "username": usuario.username,
+            "email": usuario.email,
+            "birth_date": usuario.birth_date.isoformat() if usuario.birth_date else None,
+            "friends": [friend.id for friend in usuario.friends] 
+                if hasattr(usuario, 'friends') else []
         }
         
         return jsonify(response_data), 200

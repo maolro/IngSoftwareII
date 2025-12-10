@@ -40,6 +40,8 @@ class DegustacionDB(Base):
             "comentario": self.comentario,
             "fecha_creacion": self.fecha_creacion.isoformat() if self.fecha_creacion else None,
             "fecha_actualizacion": self.fecha_actualizacion.isoformat() if self.fecha_actualizacion else None,
+            "nombre_usuario": self.usuario.username if self.usuario else None,
+            "nombre_cerveza": self.cerveza.nombre if self.cerveza else None,
         }
 
 class ComentarioDegustacion(Base):

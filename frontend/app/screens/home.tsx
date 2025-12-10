@@ -18,9 +18,7 @@ import ProfileScreen from '../home_components/profile';
 import NotificationsScreen from '../home_components/notifications';
 import { SearchModal } from '../home_components/search';
 import api from '../home_components/api'; 
-
-const CURRENT_USER_ID = 1;
-
+import { useLocalSearchParams } from 'expo-router';
 // --- Definición de tipos ---
 type PageName = 'home' | 'breweries' | 'profile' | 'notifications';
 
@@ -82,6 +80,10 @@ const AppFooter: React.FC<{
 
 // --- Componente Principal ---
 export default function App() {
+  // Parámetros que le llegan de la anterior pantalla
+  const params = useLocalSearchParams();
+  // Id del usuario actual
+  const CURRENT_USER_ID = params.userId ? parseInt(params.userId as string) : 1;
   const [activePage, setActivePage] = useState<PageName>('home');
   const [headerProps, setHeaderProps] = useState<HeaderProps>({ onBack: null });
   const [searchModalVisible, setSearchModalVisible] = useState(false);
@@ -147,7 +149,7 @@ export default function App() {
   const handleSendFriendRequest = async (userId: number) => {
     try {
       // Llama a la API
-      await api.users.addFriend(CURRENT_USER_ID, userId);
+      await api.users.sendFriendRequest(CURRENT_USER_ID, userId);
 
       // Actualiza la UI
       setFriendRequests(prev => [...prev, {
@@ -209,7 +211,7 @@ export default function App() {
           />
         );
       case 'notifications':
-        return <NotificationsScreen />;
+        return <NotificationsScreen userId={CURRENT_USER_ID}/>;
       default:
         return <DashboardScreen userId={CURRENT_USER_ID} />;
     }

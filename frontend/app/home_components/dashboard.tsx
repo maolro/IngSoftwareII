@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { Card, ListItem, theme } from './components';
-import api, { Beer, Tasting, User, Award } from './api';
+import api, { Beer, Tasting, User, Award, FriendRequest } from './api';
 
   // Variables que recibe de la cabecera
 interface DashboardProps {
@@ -15,7 +15,7 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
   const [recentTastings, setRecentTastings] = useState<Tasting[]>([]);
   const [favoriteBeers, setFavoriteBeers] = useState<Beer[]>([]);
   const [userAwards, setUserAwards] = useState<Award[]>([]);
-  const [friendRequests, setFriendRequests] = useState<User[]>([]);
+  const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +35,7 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
         tastingsData,
         favoritesData,
         awardsData,
-        allUsersData
+        requestsData
       ] = await Promise.all([
       api.users.getById(userId).then(data => 
         { console.log('✅ User data loaded'); return data; }),
@@ -45,8 +45,8 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
         { console.log('✅ Favorites data loaded'); return data; }),
       api.awards.getByUser(userId).then(data => 
         { console.log('✅ Awards data loaded'); return data; }),
-      api.users.getAll().then(data => 
-        { console.log('✅ All users data loaded'); return data; })
+      api.users.getPendingRequests(userId).then(data => 
+        { console.log('✅ Pending requests loaded'); return data; }),
     ]);
 
     console.log('All data loaded successfully');
@@ -55,49 +55,45 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
       setRecentTastings(tastingsData.slice(0, 5)); // Últimas 5 degustaciones
       setFavoriteBeers(favoritesData.slice(0, 3)); // Top 3 favoritas
       setUserAwards(awardsData); 
+      setFriendRequests(requestsData);
 
-      // Simular solicitudes de amistad (los primeros 3 usuarios que no sean amigos)
-      const potentialFriends = allUsersData
-        .filter(user => {
-          // Excluye el usuario
-          if (user.id === userId) return false;
-          // Obtiene lista de amigos del usuario
-          const currentUser = allUsersData.find(u => u.id === userId);
-          if (!currentUser || !currentUser.friends) return true;
-          // Comprueba si ya es amigo
-          const isAlreadyFriend = currentUser.friends.includes(user.id);
-          return !isAlreadyFriend;
-        })
-        .slice(4, 5);
-
-      setFriendRequests(potentialFriends);
-
-    } catch (err) {
+    } 
+    catch (err) {
       console.error('Error loading dashboard data:', err);
       setError('Error al cargar los datos del dashboard');
       Alert.alert("Error", "No se pudieron cargar los datos del dashboard");
-    } finally {
+    } 
+    finally {
       setLoading(false);
     }
   };
 
-  const handleAcceptFriend = async (friendId: number) => {
+  const handleAcceptFriend = async (senderId: number) => {
     try {
-      await api.users.addFriend(userId, friendId);
+      // Usa la API de solicitudes de amistad
+      await api.users.acceptFriendRequest(userId, senderId);
       
-      // Actualizar lista localmente
-      setFriendRequests(prev => prev.filter(user => user.id !== friendId));
-      
-      Alert.alert("Éxito", "Solicitud de amistad aceptada");
-    } catch (err) {
+      // Actualiza estado local
+      setFriendRequests(prev => prev.filter(req => req.sender_id !== senderId));
+      Alert.alert("Éxito", "Ahora son amigos");
+    } 
+    catch (err) {
       console.error('Error accepting friend:', err);
-      Alert.alert("Error", "No se pudo aceptar la solicitud de amistad");
+      Alert.alert("Error", "No se pudo aceptar la solicitud");
     }
   };
 
-  const handleDeclineFriend = (friendId: number) => {
-    // En una app real, aquí enviarías una solicitud para rechazar
-    setFriendRequests(prev => prev.filter(user => user.id !== friendId));
+  const handleDeclineFriend = async (senderId: number) => {
+    try {
+        // Usa el endpoint de rechazar
+        await api.users.rejectFriendRequest(userId, senderId);
+
+        // Actualiza estado local
+        setFriendRequests(prev => prev.filter(req => req.sender_id !== senderId));
+    } catch (err) {
+        console.error('Error rejecting friend:', err);
+        Alert.alert("Error", "No se pudo rechazar la solicitud");
+    }
   };
 
   if (loading) {
@@ -137,23 +133,23 @@ export const DashboardScreen: React.FC<DashboardProps> = ({
       {/* Solicitudes de amistad */}
       {friendRequests.length > 0 && (
         <Card title={`Solicitudes de amistad (${friendRequests.length})`}>
-          {friendRequests.map(friend => (
-            <View key={friend.id} style={styles.friendRequestItem}>
+          {friendRequests.map(request => (
+            <View key={request.id} style={styles.friendRequestItem}>
               <ListItem 
-                title={friend.username}
-                subtitle={friend.email}
-                avatarText={friend.username.substring(0, 2).toUpperCase()}
+                title={request.sender_username}
+                subtitle={request.sender_email}
+                avatarText={request.sender_username.substring(0, 2).toUpperCase()}
               />
               <View style={styles.friendActions}>
                 <TouchableOpacity 
                   style={[styles.friendButton, styles.acceptButton]}
-                  onPress={() => handleAcceptFriend(friend.id)}
+                  onPress={() => handleAcceptFriend(request.sender_id)}
                 >
                   <Text style={styles.friendButtonText}>✓</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={[styles.friendButton, styles.declineButton]}
-                  onPress={() => handleDeclineFriend(friend.id)}
+                  onPress={() => handleDeclineFriend(request.sender_id)}
                 >
                   <Text style={styles.friendButtonText}>✕</Text>
                 </TouchableOpacity>

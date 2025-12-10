@@ -1,6 +1,6 @@
 // api.tsx
-//const API_BASE_URL = 'http://localhost:8000/api';
-const API_BASE_URL = 'http://10.0.2.2:8000/api';
+const API_BASE_URL = 'http://localhost:8000/api';
+//const API_BASE_URL = 'http://10.0.2.2:8000/api';
 
 // Interfaces para los tipos de datos
 export interface User {
@@ -39,8 +39,8 @@ export interface Tasting {
   comentario?: string;
   fecha_creacion?: string;
   fecha_actualizacion?: string;
-  nombre_usuario?: string;
-  nombre_cerveza?: string;
+  nombre_usuario: string;
+  nombre_cerveza: string;
 }
 
 export interface Brewery {
@@ -71,6 +71,15 @@ export interface Award {
   icono?: string;
 }
 
+export interface FriendRequest {
+  id: number;
+  sender_id: number;
+  receiver_id: number;
+  created_at?: string;
+  sender_username: string;
+  sender_email: string;
+}
+
 // Cliente API genérico
 class ApiClient {
   private baseURL: string;
@@ -95,41 +104,33 @@ class ApiClient {
       const response = await fetch(url, config);
       
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`API Error: ${response.status} - ${errorText}`);
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+        const responseClone = response.clone(); 
+        const errorData = await response.json();
+        // Extrae el mensaje
+        console.log(errorData.error)
+        const serverMessage = errorData.error || "Error desconocido del servidor";
+        throw new Error(serverMessage); 
       }
 
-      // Para respuestas sin contenido (como DELETE)
       if (response.status === 204) {
         return null;
       }
 
-      const responseForText = response.clone();
-    
-      try {
-        // Intenta parsear como JSON
-        const data = await response.json();
-        // Imprime el JSON de forma legible
-        console.log(`Respuesta JSON ${url}:`, JSON.stringify(data, null, 2));
-        return data;
-        
-      } catch (jsonError) {
-        // Si falla el .json() muestra el texto plano
-        console.error(`JSON no parseable. Este es el texto:`, await responseForText.text());
-        throw jsonError;
-      }
-      } catch (error) {
-        console.error(`💥 Network error for ${url}:`, error);
-        throw error;
-      }
-  }
+      const data = await response.json();
+      return data;
+
+    } 
+    catch (error) {
+      console.error(`💥 Network error for ${url}:`, error);
+      throw error;
+    }
+}
 
   async get(endpoint: string) {
     return this.request(endpoint, { method: 'GET' });
   }
 
-  async post(endpoint: string, data: any) {
+  async post(endpoint: string, data: any = {}) {
     return this.request(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -187,7 +188,27 @@ export const api = {
       apiClient.delete(`/usuarios/${id}/amigos/${friendId}/`),
 
     login: (username: string, password: string): Promise<User> =>
-      apiClient.post('/usuarios/login', { username: username, password: password })
+      apiClient.post('/usuarios/login/', { username: username, password: password }),
+
+    // Obtener actividad del usuario
+    getActivity: (id: number): Promise<Tasting[]> => 
+      apiClient.get(`/usuarios/${id}/actividad/`),
+
+    // Enviar solicitud de amistad
+    sendFriendRequest: (userId: number, friendId: number): Promise<{ message: string }> =>
+      apiClient.post(`/usuarios/${userId}/solicitudes/`, { friend_id: friendId }),
+
+    // Obtener solicitudes de amistad
+    getPendingRequests: (userId: number): Promise<FriendRequest[]> =>
+      apiClient.get(`/usuarios/${userId}/solicitudes/`),
+
+    // Aceptar solicitud
+    acceptFriendRequest: (userId: number, senderId: number): Promise<{ message: string }> =>
+      apiClient.post(`/usuarios/${userId}/solicitudes/${senderId}/aceptar`),
+
+    // Rechazar solicitud
+    rejectFriendRequest: (userId: number, senderId: number): Promise<{ message: string }> =>
+      apiClient.delete(`/usuarios/${userId}/solicitudes/${senderId}`),
   },
 
   // --- CERVEZAS ---

@@ -45,4 +45,5 @@ class FriendRequestDB(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             # Incluimos datos básicos del enviador para el frontend
             "sender_username": self.sender.username if self.sender else None,
+            "sender_email": self.sender.email if self.sender else None,
         }

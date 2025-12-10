@@ -6,6 +6,7 @@ import {
 import { Card, ListItem, theme, TouchableListItem } from './components';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import api, { User, Tasting } from './api';
+import { useRouter } from 'expo-router';
 
 interface ProfileScreenProps {
   userId: number | null; 
@@ -26,6 +27,8 @@ export default function ProfileScreen({
   onViewProfile,
   setHeaderProps
 }: ProfileScreenProps) {
+  // Router para navegación
+  const router = useRouter()
 
   const [activeTab, setActiveTab] = useState('info');
   const [isEditing, setIsEditing] = useState(false);
@@ -49,6 +52,12 @@ export default function ProfileScreen({
 
   // Constante para comprobar si estás en tu perfil
   const isMyProfile = userId === null || userId === currentUserId;
+
+  // Gestiona el logout
+  const handleLogout = () => {
+    // Navega de nuevo al index
+    router.replace('/'); 
+  };
 
   // --- Carga de Datos del Perfil  ---
   useEffect(() => {
@@ -203,6 +212,9 @@ export default function ProfileScreen({
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={[styles.button, styles.buttonEdit]} onPress={handleEdit}>
           <Text style={styles.buttonText}>Editar Perfil</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.button, styles.buttonLogout]} onPress={handleLogout}>
+          <Text style={styles.buttonText}>Salir</Text>
         </TouchableOpacity>
       </View>
     );
@@ -450,6 +462,9 @@ const styles = StyleSheet.create({
   },
   buttonEdit: {
     backgroundColor: theme.blue,
+  },
+  buttonLogout: {
+    backgroundColor: '#dc2626', 
   },
   buttonSave: {
     backgroundColor: theme.primary,

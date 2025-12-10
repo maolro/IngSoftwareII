@@ -1,16 +1,19 @@
 import { Link, useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
-import { Text, StyleSheet, TextInput, TouchableOpacity, View, Image } from "react-native";
+import { Text, StyleSheet, TextInput, TouchableOpacity, View, Image, Alert } from "react-native";
+import api from "../home_components/api";
 
 export default function RegisterScreen() {
     // Variables
     const router = useRouter();
-    const [username, setUsername] = useState('')
-    const [password, setPassword] = useState('')
-    const [email, setEmail] = useState('')
-    const [confirmPassword, setConfirmPassword] = useState('')
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [email, setEmail] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [birthDate, setBirthDate] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
     const [regError, setRegError] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     // Función de validación de correos
     const isValidEmail = (email: string) => {
@@ -19,7 +22,7 @@ export default function RegisterScreen() {
     };
 
     // Gestión de registro
-    const handleRegistration = () => {
+    const handleRegistration = async () => {
         // Elimina mensaje de error
         setErrorMsg('');
 
@@ -46,13 +49,37 @@ export default function RegisterScreen() {
             setRegError(true);
             return;
         }
-        
-        if (username === 'admin') { 
-            setErrorMsg('ERROR: El nombre o correo del usuario ya existe.');
-            setRegError(true);
-            return;
+
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(birthDate)) {
+                setErrorMsg('ERROR: La fecha debe ser YYYY-MM-DD (Ej: 1990-01-31).');
+                setRegError(true);
+                return;
         }
-        router.push('./age_verify');
+        
+        try {
+            setLoading(true); // Empieza a cargar
+            
+            const user = await api.users.create({
+                username: username,
+                email: email,
+                password: password,
+                birth_date: birthDate
+            });
+            console.log(user);
+            // Lógica en caso de éxito
+            if (user && user.id) {
+                router.replace({ pathname: './home',params: { userId: user.id }})
+            }
+        } 
+        catch (error: any) {
+            console.error("Registration error:", error);
+            setRegError(true);
+            setErrorMsg(error.message || 'ERROR: No se pudo crear el usuario.');
+        } 
+        finally {
+            setLoading(false);
+        }
     };
 
     const ErrorMessage = ({ message }: { message: string }) => {
@@ -86,19 +113,28 @@ export default function RegisterScreen() {
 
             <TextInput
                 style={styles.input}
-                placeholder="Contraseña"
-                autoCapitalize="none"
-                value={password}
-                onChangeText={setPassword}
+                placeholder="Fecha de nacimiento (YYYY-MM-DD)"
+                value={birthDate}
+                onChangeText={setBirthDate}
             />
 
             <TextInput
                 style={styles.input}
-                placeholder="Confirmar contraseña"
+                placeholder="Contraseña"
                 autoCapitalize="none"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
+                secureTextEntry={true} 
+                value={password}
+                onChangeText={setPassword}
             />
+
+                <TextInput
+                    style={styles.input}
+                    placeholder="Confirmar contraseña"
+                    autoCapitalize="none"
+                    secureTextEntry={true} // Added for security
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                />
 
             <TouchableOpacity style={styles.button} onPress={handleRegistration}>
                 <Text style={styles.buttonText}>Continuar</Text>

@@ -14,8 +14,6 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { theme } from './components';
 import api, { User } from './api';
 
-const CURRENT_USER_ID = 1;
-
 interface SearchModalProps {
   visible: boolean;
   onClose: () => void;
@@ -66,7 +64,6 @@ export const SearchModal: React.FC<SearchModalProps> = ({
 
     // Filtra los usuarios localmente
     const filteredUsers = allUsers.filter(user =>
-      user.id !== CURRENT_USER_ID && // Excluir al usuario actual
       (user.username.toLowerCase().includes(query.toLowerCase()) ||
         (user.email && user.email.toLowerCase().includes(query.toLowerCase())))
     );
