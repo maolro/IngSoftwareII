@@ -505,6 +505,58 @@ class DegustacionTester:
         except Exception as e:
             self.print_error(f"Error probando puntuación inválida: {e}")
             return False
+        
+    def test_obtener_actividad(self, user_id):
+        """Prueba endpoint de actividad de amigos"""
+        self.print_test_header(f"OBTENER FEED ACTIVIDAD (ID: {user_id})")
+        
+        try:
+            resp = requests.get(f"{BASE_URL}/usuarios/{user_id}/actividad/")
+            
+            if resp.status_code == 200:
+                actividad = resp.json()
+                self.print_success(f"Feed obtenido correctamente. Elementos: {len(actividad)}")
+                return actividad
+            elif resp.status_code == 404:
+                self.print_error(f"Usuario no encontrado al pedir actividad")
+                return None
+            else:
+                self.print_error(f"Error obteniendo actividad: {resp.status_code}")
+                return None
+        except Exception as e:
+            self.print_error(f"Excepción obteniendo actividad: {e}")
+            return None
+        
+    def agregar_amigo_prueba(self, usuario_id, amigo_id, expected_success=True):
+        """Prueba agregar amigo a usuario"""
+        self.print_test_header(f"AGREGAR AMIGO: Usuario {usuario_id} -> Amigo {amigo_id}")
+        
+        amigo_data = {
+            "friend_id": amigo_id
+        }
+        
+        try:
+            resp = requests.post(f"{BASE_URL}/usuarios/{usuario_id}/amigos/", json=amigo_data)
+            
+            if expected_success and resp.status_code == 201:
+                resultado = resp.json()
+                if resultado.get('success'):
+                    self.print_success(f"Amigo agregado: {usuario_id} -> {amigo_id}")
+                    return True
+                else:
+                    self.print_error(f"Amigo no agregado: {resultado.get('error', 'Error desconocido')}")
+                    return False
+            elif not expected_success and resp.status_code != 201:
+                self.print_success("Agregar amigo falló como se esperaba")
+                return False
+            else:
+                self.print_error(f"Resultado inesperado. {resp.status_code} - {resp.json()['error']}")
+                return False
+                
+        except Exception as e:
+            self.print_error(f"Error agregando amigo: {e}")
+            return False
+    
 
     def run_comprehensive_test(self):
         """Ejecuta una prueba completa de todos los endpoints de degustaciones"""
@@ -616,8 +668,13 @@ class DegustacionTester:
         
         self.test_obtener_degustacion_por_id(99999, expected_success=False)
         self.wait_for_operation()
+
+        # Paso 12: Probar Feed Actividad 
+        self.print_info("Paso 12: Probando Feed Actividad...")
+        self.agregar_amigo_prueba(usuario1_id, usuario2_id)
+        self.test_obtener_actividad(usuario2_id)
         
-        # Paso 9: Probar eliminación
+        # Paso 10: Probar eliminación
         self.print_info("Paso 9: Probando eliminación de degustaciones...")
         
         if self.created_ids['degustaciones']:

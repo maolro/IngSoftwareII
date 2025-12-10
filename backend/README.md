@@ -38,7 +38,7 @@ backend/
     └── usuario_tester.py
 ```
 
-## 🛠️ Tecnologías y Librerías
+## Tecnologías y Librerías
 
 ### **Framework Principal**
 - **Flask** - Microframework web para Python
@@ -76,7 +76,7 @@ backend/
 - **init_db()**: Inicialización de tablas
 - **get_db()**: Gestión de sesiones por request
 
-## 🎯 Endpoints Principales
+## Endpoints Principales
 
 ### **Cervezas (`/api/cervezas/`)**
 - `POST /` - Crear cerveza 
@@ -117,7 +117,11 @@ python -m app.main
 ### **Inicialización de Base de Datos**
 La base de datos se inicializa automáticamente al ejecutar la aplicación:
 
-## 🧪 Sistema de Pruebas
+### **Comandos sqlite**
+- **Acceder base de datos**: "sqlite3 database.db"
+- **Mostrar bases de datos**: ".databases"
+
+## Sistema de Pruebas
 
 ### **Ejecutar Pruebas**
 
@@ -129,7 +133,6 @@ python tests/galardon_tester.py
 
 # Pruebas de Usuarios
 python tests/usuario_tester.py
-```
 
 ### **Características de las Pruebas**
 - **Limpieza automática**: Borra datos de prueba al finalizar

@@ -1,6 +1,8 @@
 import { Link, useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
 import { Text, StyleSheet, TextInput, TouchableOpacity, View, Image } from "react-native";
+import api from '../home_components/api'; 
+
 
 export default function PasswordRecoverScreen() {
     // Variables
@@ -11,20 +13,23 @@ export default function PasswordRecoverScreen() {
 
     // Función de gestión de login
     const handleLogin = () => {
-        // --- Dummy Validation Logic (Replace with real API call later) ---
-        
-        // Example of a hardcoded "correct" user/pass (for demonstration)
-        const CORRECT_USER = 'admin';
-        const CORRECT_PASS = '12345';
-        
-        if (username === CORRECT_USER && password === CORRECT_PASS) {
-            // Success: Clear any previous error and navigate (e.g., to the home screen)
-            setLoginError(false);
-            router.push('./home');
-        } else {
-            // Failure: Set error state to true
-            setLoginError(true);
+        try {
+            const userData = api.users.login(username, password)
+            console.log("Datos de usuario: "+userData.toString())
+            if (userData) {
+                // En éxito elimina el error y va al home
+                setLoginError(false);
+                router.push('./home');
+            } 
+            else {
+                // En caso de error actualiza el error
+                setLoginError(true);
+            }
+        } 
+        catch (error) {
+            console.error("Error al cargar el usuario:", error);
         }
+
     };
 
     return (

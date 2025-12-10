@@ -185,6 +185,9 @@ export const api = {
     
     removeFriend: (id: number, friendId: number): Promise<void> =>
       apiClient.delete(`/usuarios/${id}/amigos/${friendId}/`),
+
+    login: (username: string, password: string): Promise<User> =>
+      apiClient.post('/usuarios/login', { username: username, password: password })
   },
 
   // --- CERVEZAS ---

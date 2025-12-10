@@ -3,6 +3,9 @@ from uuid import uuid4
 from sqlalchemy import Connection, MetaData, Table, create_engine, select, text, except_
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 
+from app.objetos.amistad import FriendRequestDB
+from app.objetos.degustacion import DegustacionDB
+
 from ..objetos.usuario import UsuarioDB, UsuarioCreate
 
 table_name = "users"
@@ -218,3 +221,97 @@ class UsuarioServicio:
             db.rollback()
             print(f"Error removing friend: {e}")
             return False
+
+    @staticmethod
+    def get_recent_friends_activity(db: Session, user_id: int, limit: int = 5) -> List[DegustacionDB]:
+        """
+        Obtiene las últimas degustaciones creadas por los amigos del usuario.
+        """
+        # Obtenemos el usuario para acceder a su lista de amigos
+        user = UsuarioServicio.get_usuario_by_id(db, user_id)
+        if not user or not user.friends:
+            return []
+
+        # Obtenemos lista de IDs de los amigos
+        friend_ids = [friend.id for friend in user.friends]
+
+        # Filtramos donde el usuario_id esté en la lista de amigos
+        activity = db.query(DegustacionDB)\
+                     .filter(DegustacionDB.usuario_id.in_(friend_ids))\
+                     .order_by(DegustacionDB.fecha_creacion.desc())\
+                     .limit(limit)\
+                     .all()
+        
+        return activity
+    
+    # Lógica de Solicitudes de Amistad
+
+    @staticmethod
+    def crear_solicitud_amistad(db: Session, sender_id: int, receiver_id: int):
+        """
+        Crea una solicitud de amistad entre user_id -> friend_id
+        """
+        # Verifica que no sean ya amigos 
+        sender = UsuarioServicio.get_usuario_by_id(db, sender_id)
+        receiver = UsuarioServicio.get_usuario_by_id(db, receiver_id)
+        
+        if not sender or not receiver:
+            raise ValueError("Uno de los usuarios no existe")
+
+        if receiver in sender.friends:
+            raise ValueError("Ya son amigos")
+
+        # Verifica que no exista ya una solicitud pendiente (en cualquier dirección)
+        existing_req = db.query(FriendRequestDB).filter(
+            ((FriendRequestDB.user_id == sender_id) & (FriendRequestDB.friend_id == receiver_id)) |
+            ((FriendRequestDB.user_id == receiver_id) & (FriendRequestDB.friend_id == sender_id))
+        ).first()
+
+        if existing_req:
+            raise ValueError("Ya existe una solicitud pendiente entre estos usuarios")
+
+        # Crea la solicitud
+        new_req = FriendRequestDB(user_id=sender_id, friend_id=receiver_id, is_accepted=False)
+        db.add(new_req)
+        db.commit()
+        return new_req
+
+    @staticmethod
+    def obtener_solicitudes_pendientes(db: Session, user_id: int):
+        """
+        Obtiene solicitudes donde el usuario es el RECEPTOR (friend_id)
+        """
+        return db.query(FriendRequestDB).filter(FriendRequestDB.friend_id == user_id).all()
+
+    @staticmethod
+    def aceptar_solicitud(db: Session, receiver_id: int, sender_id: int):
+        """
+        Acepta la solicitud, creando la amistad y borrando la solicitud.
+        """
+        # Busca la solicitud específica
+        req = db.query(FriendRequestDB).filter_by(user_id=sender_id, friend_id=receiver_id).first()
+        
+        if not req:
+            return False
+
+        # Crea la amistad real
+        UsuarioServicio.crear_amistad(db, sender_id, receiver_id)
+
+        # Borra la solicitud 
+        db.delete(req)
+        db.commit()
+        return True
+
+    @staticmethod
+    def rechazar_solicitud(db: Session, receiver_id: int, sender_id: int):
+        """
+        Rechaza la solicitud
+        """
+        req = db.query(FriendRequestDB).filter_by(user_id=sender_id, friend_id=receiver_id).first()
+        
+        if not req:
+            return False
+
+        db.delete(req)
+        db.commit()
+        return True

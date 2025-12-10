@@ -254,6 +254,14 @@ def get_friend_info(user_id: int, friend_id: int):
                 "error": f"El usuario de ID {user_id} no tiene ningún amigo con ID {friend_id}."
             }), 404
         
+        # Comprueba si realmente son amigos
+        is_friend = any(f.id == friend_id for f in db_user.friends)
+        
+        if not is_friend:
+            return jsonify({
+                "error": f"El usuario {user_id} no es amigo de {friend_id}."
+            }), 404
+
         # Devuelve información de usuario
         friend_response = {
             "id": db_friend.id, 
@@ -295,3 +303,153 @@ def remove_friend(user_id: int, friend_id: int):
         return jsonify({
             "error": f"Error interno del servidor: {str(e)}"
         }), 500
+
+# ENDPOINTS DE LOGIN   
+@usuario_bp.route("/usuarios/login/", methods=["POST"])
+def login():
+    """
+    Endpoint para login
+    """
+    data = request.json
+    if not data:
+        return jsonify({"error": "No se proporcionaron datos"}), 400
+    
+    # Comprueba si están los campos correctos
+    required_fields = ['username', 'password']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({
+                "error": f"El campo '{field}' es obligatorio"
+            }), 400    
+        
+    username = data['username']
+    password = data['password']
+
+    try:
+        # Comrpueba si el usuario existe
+        usuario = UsuarioServicio.get_usuario_by_username(g.db, username)
+        
+        if not usuario:
+            return jsonify({"error": "El usuario indicado no existe"}), 401
+        
+        # Comprueba si la contraseña coincide
+        if not (UsuarioServicio.verify_password(password, usuario.password_hash)):
+            return jsonify({"error": "Contraseña incorrecta"}), 401
+                
+        # Preparar respuesta
+        response_data = {
+            "user": {
+                "id": usuario.id, 
+                "username": usuario.username,
+                "email": usuario.email,
+                "birth_date": usuario.birth_date.isoformat() if usuario.birth_date else None,
+                "friends": [friend.id for friend in usuario.friends] 
+                    if hasattr(usuario, 'friends') else []
+            }
+        }
+        
+        return jsonify(response_data), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"Error interno del servidor: {str(e)}"}), 500
+
+# ENDPOINTS DE ACTIVIDAD
+@usuario_bp.route("/usuarios/<int:user_id>/actividad/", methods=["GET"])
+def get_user_activity(user_id: int):
+    """
+    Obtener actividad reciente (degustaciones) de los amigos del usuario
+    """
+    try:
+        # Verificar que el usuario existe
+        user = UsuarioServicio.get_usuario_by_id(g.db, user_id)
+        if not user:
+             return jsonify({"error": f"Usuario {user_id} no encontrado"}), 404
+
+        # Llamar al servicio
+        recent_tastings = UsuarioServicio.get_recent_friends_activity(g.db, user_id, limit=5)
+        
+        # Formatear respuesta
+        response = []
+        for tasting in recent_tastings:
+            data = tasting.to_dict()
+            
+            # Enriquecer con datos del amigo (nombre y avatar)
+            if tasting.usuario:
+                data['nombre_usuario'] = tasting.usuario.username
+            
+            # Enriquecer con nombre de la cerveza (útil para el feed)
+            if tasting.cerveza:
+                data['nombre_cerveza'] = tasting.cerveza.nombre
+                
+            response.append(data)
+
+        return jsonify(response), 200
+
+    except Exception as e:
+        return jsonify({
+            "error": f"Error interno del servidor: {str(e)}"
+        }), 500
+
+# ENDPOINTS DE SOLICITUDES DE AMISTAD
+
+@usuario_bp.route("/usuarios/<int:user_id>/solicitudes/", methods=["POST"])
+def send_friend_request(user_id: int):
+    """
+    El usuario (user_id) envía una solicitud a otro usuario (friend_id en el body)
+    """
+    data = request.json
+    friend_id = data.get('friend_id')
+
+    if not friend_id:
+        return jsonify({"error": "Se requiere friend_id"}), 400
+    
+    if user_id == friend_id:
+        return jsonify({"error": "No puedes enviarte solicitud a ti mismo"}), 400
+
+    try:
+        UsuarioServicio.crear_solicitud_amistad(g.db, sender_id=user_id, receiver_id=friend_id)
+        return jsonify({"message": "Solicitud enviada correctamente"}), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 409
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@usuario_bp.route("/usuarios/<int:user_id>/solicitudes/", methods=["GET"])
+def get_pending_requests(user_id: int):
+    """
+    Ver todas las solicitudes pendientes que ha recibido el usuario
+    """
+    try:
+        requests = UsuarioServicio.obtener_solicitudes_pendientes(g.db, user_id)
+        return jsonify([req.to_dict() for req in requests]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@usuario_bp.route("/usuarios/<int:user_id>/solicitudes/<int:sender_id>/aceptar", methods=["POST"])
+def accept_request(user_id: int, sender_id: int):
+    """
+    El usuario (user_id) acepta la solicitud enviada por sender_id
+    """
+    try:
+        success = UsuarioServicio.aceptar_solicitud(g.db, receiver_id=user_id, sender_id=sender_id)
+        if success:
+            return jsonify({"message": "Solicitud aceptada. Ahora son amigos."}), 200
+        else:
+            return jsonify({"error": "Solicitud no encontrada"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@usuario_bp.route("/usuarios/<int:user_id>/solicitudes/<int:sender_id>", methods=["DELETE"])
+def reject_request(user_id: int, sender_id: int):
+    """
+    El usuario (user_id) rechaza (borra) la solicitud enviada por sender_id
+    """
+    try:
+        success = UsuarioServicio.rechazar_solicitud(g.db, receiver_id=user_id, sender_id=sender_id)
+        if success:
+            return jsonify({"message": "Solicitud rechazada/eliminada."}), 200
+        else:
+            return jsonify({"error": "Solicitud no encontrada"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    

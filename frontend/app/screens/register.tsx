@@ -47,7 +47,6 @@ export default function RegisterScreen() {
             return;
         }
         
-        // Llama al API
         if (username === 'admin') { 
             setErrorMsg('ERROR: El nombre o correo del usuario ya existe.');
             setRegError(true);

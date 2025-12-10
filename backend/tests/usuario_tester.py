@@ -299,6 +299,134 @@ class UsuarioTester:
         except Exception as e:
             self.print_error(f"Error eliminando amigo: {e}")
             return False
+        
+    def test_login(self, username, password, expected_success=True):
+        """Prueba endpoint de Login"""
+        self.print_test_header(f"LOGIN USUARIO: {username}")
+        
+        login_data = {
+            "username": username,
+            "password": password
+        }
+        
+        try:
+            resp = requests.post(f"{BASE_URL}/usuarios/login/", json=login_data)
+            
+            if expected_success and resp.status_code == 200:
+                data = resp.json()
+                if 'user' in data and data['user']['username'] == username:
+                    self.print_success(f"Login exitoso para {username}")
+                    return data['user']
+                else:
+                    self.print_error("Login devolvió 200 pero estructura de datos incorrecta")
+                    return None
+            elif not expected_success and resp.status_code in [400, 401]:
+                self.print_success(f"Login fallido correctamente: {resp.status_code}")
+                return None
+            else:
+                self.print_error(f"Resultado inesperado login. {resp.status_code} - {resp.text}")
+                return None
+                
+        except Exception as e:
+            self.print_error(f"Error en login: {e}")
+            return None
+
+    def test_enviar_solicitud(self, user_id, friend_id, expected_success=True):
+        """Prueba enviar solicitud de amistad"""
+        # self.print_test_header(f"ENVIAR SOLICITUD: {user_id} -> {friend_id}")
+        data = {"friend_id": friend_id}
+        
+        try:
+            resp = requests.post(f"{BASE_URL}/usuarios/{user_id}/solicitudes/", json=data)
+            
+            if expected_success and resp.status_code == 201:
+                self.print_success(f"Solicitud enviada: {user_id} -> {friend_id}")
+                return True
+            elif not expected_success:
+                self.print_success(f"Solicitud no enviada (esperado): {resp.status_code}")
+                return False
+            else:
+                self.print_error(f"Fallo al enviar solicitud: {resp.status_code} - {resp.text}")
+                return False
+        except Exception as e:
+            self.print_error(f"Excepción enviando solicitud: {e}")
+            return False
+
+    def test_ver_solicitudes_pendientes(self, user_id, expected_count=None):
+        """Prueba ver solicitudes pendientes"""
+        try:
+            resp = requests.get(f"{BASE_URL}/usuarios/{user_id}/solicitudes/")
+            
+            if resp.status_code == 200:
+                solicitudes = resp.json()
+                msg = f"Solicitudes pendientes obtenidas para {user_id}: {len(solicitudes)}"
+                
+                if expected_count is not None:
+                    if len(solicitudes) == expected_count:
+                        self.print_success(msg + f" (Coincide: {expected_count})")
+                    else:
+                        self.print_error(msg + f" (Esperado: {expected_count})")
+                else:
+                    self.print_success(msg)
+                return solicitudes
+            else:
+                self.print_error(f"Error obteniendo solicitudes: {resp.status_code}")
+                return []
+        except Exception as e:
+            self.print_error(f"Excepción obteniendo solicitudes: {e}")
+            return []
+
+    def test_aceptar_solicitud(self, user_id, sender_id, expected_success=True):
+        """Prueba aceptar solicitud"""
+        try:
+            resp = requests.post(f"{BASE_URL}/usuarios/{user_id}/solicitudes/{sender_id}/aceptar")
+            
+            if expected_success and resp.status_code == 200:
+                self.print_success(f"Solicitud aceptada: {sender_id} -> {user_id}")
+                return True
+            elif not expected_success and resp.status_code != 200:
+                self.print_success(f"Aceptación falló como se esperaba: {resp.status_code}")
+                return False
+            else:
+                self.print_error(f"Fallo inesperado aceptando solicitud: {resp.status_code}")
+                return False
+        except Exception as e:
+            self.print_error(f"Excepción aceptando solicitud: {e}")
+            return False
+
+    def test_rechazar_solicitud(self, user_id, sender_id, expected_success=True):
+        """Prueba rechazar solicitud"""
+        try:
+            resp = requests.delete(f"{BASE_URL}/usuarios/{user_id}/solicitudes/{sender_id}")
+            
+            if expected_success and resp.status_code == 200:
+                self.print_success(f"Solicitud rechazada/eliminada: {sender_id} -> {user_id}")
+                return True
+            else:
+                self.print_error(f"Fallo rechazando solicitud: {resp.status_code}")
+                return False
+        except Exception as e:
+            self.print_error(f"Excepción rechazando solicitud: {e}")
+            return False
+
+    def test_verificar_amistad(self, user_id, friend_id, deberian_ser_amigos=True):
+        """Helper para verificar si dos usuarios son amigos"""
+        resp = requests.get(f"{BASE_URL}/usuarios/{user_id}/amigos/{friend_id}/")
+        
+        if deberian_ser_amigos:
+            if resp.status_code == 200:
+                self.print_success(f"Verificación amistad OK: {user_id} y {friend_id} son amigos")
+                return True
+            else:
+                self.print_error(f"Error: {user_id} y {friend_id} NO son amigos (se esperaba que sí)")
+                return False
+        else:
+            if resp.status_code == 404:
+                self.print_success(f"Verificación amistad OK: {user_id} y {friend_id} NO son amigos")
+                return True
+            else:
+                self.print_error(f"Error: {user_id} y {friend_id} SON amigos (se esperaba que no)")
+                return False
 
     def test_servidor_conectado(self):
         """Prueba conexión al servidor"""
@@ -462,9 +590,70 @@ class UsuarioTester:
         # Probar agregarse a sí mismo como amigo
         self.test_agregar_amigo_a_si_mismo(usuario1_id)
         self.wait_for_operation()
+
+        # Paso 9: Probar Login
+        self.print_info("Paso 1: Creando usuarios de prueba...")
         
-        # Paso 8: Probar eliminación
-        self.print_info("Paso 8: Probando eliminación de usuarios...")
+        pwd_comun = "Password123!"
+        
+        user_a = self.test_crear_usuario("UsuarioA", "a@test.com", pwd_comun, "1990-01-01")
+        user_b = self.test_crear_usuario("UsuarioB", "b@test.com", pwd_comun, "1992-02-02")
+        user_c = self.test_crear_usuario("UsuarioC", "c@test.com", pwd_comun, "1995-03-03")
+        
+        self.wait_for_operation()
+        
+        if not all([user_a, user_b, user_c]):
+            self.print_error("No se pudieron crear los usuarios. Abortando.")
+            self.cleanup()
+            return
+
+        self.print_info("Paso 9: Probando Login...")
+        self.test_login("UsuarioA", pwd_comun, expected_success=True)
+        self.test_login("UsuarioA", "wrongpass", expected_success=False)
+    
+
+        # Paso 10: Flujo Solicitud Aceptar (A -> B)
+        self.print_info("Paso 10: Flujo Amistad ACEPTAR (A solicita a B)...")
+        
+        # A envía solicitud a B
+        self.test_enviar_solicitud(user_a, user_b)
+        self.wait_for_operation()
+        
+        # B verifica solicitudes (debe haber 1 de A)
+        reqs_b = self.test_ver_solicitudes_pendientes(user_b, expected_count=1)
+        if reqs_b and reqs_b[0]['sender_id'] == usuario2_id:
+            self.print_success("Solicitud recibida correctamente en lista de B")
+        
+        # B acepta a A
+        self.test_aceptar_solicitud(user_b, user_a)
+        self.wait_for_operation()
+        
+        # Verificar amistad
+        self.test_verificar_amistad(user_a, user_b, True)
+        
+        # Verificar que la solicitud desapareció
+        self.test_ver_solicitudes_pendientes(user_b, expected_count=0)
+
+        # Paso 11: Flujo Solicitud Rechazar (C -> A)
+        self.print_info("Paso 11: Flujo Amistad RECHAZAR (C solicita a A)...")
+        
+        # C envía solicitud a A
+        self.test_enviar_solicitud(user_c, user_a)
+        self.wait_for_operation()
+        
+        # A verifica solicitudes
+        self.test_ver_solicitudes_pendientes(user_a, expected_count=1)
+        
+        # A rechaza a C
+        self.test_rechazar_solicitud(user_a, user_c)
+        self.wait_for_operation()
+        
+        # Verificar que NO son amigos
+        self.test_verificar_amistad(user_a, user_c, False)
+        self.test_ver_solicitudes_pendientes(user_a, expected_count=0)
+
+        # Paso 12: Probar eliminación
+        self.print_info("Paso 13: Probando eliminación de usuarios...")
         # Eliminar solo uno para demostrar la funcionalidad
         if self.created_ids['usuarios']:
             usuario_a_eliminar = self.created_ids['usuarios'][0]
